@@ -1,4 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
+import { getCitizenDisplayName, getComplaintCategoryLabel } from '../services/complaintService';
 import {
   ArrowLeft, MapPin, User, MessageSquareWarning, Shield, AlertTriangle,
 } from 'lucide-react';
@@ -210,13 +211,16 @@ export default function ProjectDetail() {
                 <div className="divide-y divide-slate-100">
                   {complaints.map((c, i) => (
                     <div key={`${c.createdAt}-${i}`} className="p-4 sm:p-5 hover:bg-slate-50/50 transition-colors">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <StatusBadge status={c.status} />
+                      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={c.status} />
+                          <span className="text-xs text-slate-500">{getComplaintCategoryLabel(c.category)}</span>
+                        </div>
                         <span className="text-xs text-slate-400 shrink-0">{formatDate(c.createdAt)}</span>
                       </div>
                       <p className="text-sm text-slate-700 leading-relaxed">{c.message}</p>
                       <p className="text-xs text-slate-500 flex items-center gap-1 mt-2">
-                        <User className="h-3 w-3" /> {c.citizenName}
+                        <User className="h-3 w-3" /> {getCitizenDisplayName(c.citizenName)}
                       </p>
                     </div>
                   ))}

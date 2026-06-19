@@ -9,7 +9,10 @@ import ProjectDetail from './pages/ProjectDetail';
 import Complaints from './pages/Complaints';
 import AdminDashboard from './pages/AdminDashboard';
 import AddProject from './pages/AddProject';
+import AddPayment from './pages/AddPayment';
+import UploadProof from './pages/UploadProof';
 import AddUpdate from './pages/AddUpdate';
+import AdminComplaints from './pages/AdminComplaints';
 
 export default function App() {
   return (
@@ -25,7 +28,10 @@ export default function App() {
             <Route path="admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="add-project" element={<AddProject />} />
+              <Route path="add-payment" element={<AddPayment />} />
+              <Route path="upload-proof" element={<UploadProof />} />
               <Route path="add-update" element={<AddUpdate />} />
+              <Route path="complaints" element={<AdminComplaints />} />
             </Route>
           </Route>
         </Routes>

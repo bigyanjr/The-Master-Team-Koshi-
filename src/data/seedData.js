@@ -81,8 +81,8 @@ export const projects = [
       { type: 'during', title: 'Asphalt surfacing — southern section', url: 'https://placehold.co/800x450/059669/white?text=Surfacing', uploadedAt: '2025-12-12' },
     ],
     complaints: [
-      { citizenName: 'Prem Lal Shrestha', message: 'Temporary road closure causing difficulty for market vendors during peak hours.', status: 'Resolved', createdAt: '2025-09-02' },
-      { citizenName: 'Mina Maharjan', message: 'Dust from construction affecting nearby shops.', status: 'Under Review', createdAt: '2025-11-18' },
+      { id: 'comp-seed-1', citizenName: 'Prem Lal Shrestha', category: 'Delay concern', message: 'Temporary road closure causing difficulty for market vendors during peak hours.', status: 'Resolved', createdAt: '2025-09-02' },
+      { id: 'comp-seed-2', citizenName: 'Mina Maharjan', category: 'Poor quality work', message: 'Dust from construction affecting nearby shops.', status: 'Under Review', createdAt: '2025-11-18' },
     ],
   },
   {
