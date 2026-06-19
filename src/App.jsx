@@ -16,8 +16,8 @@ export default function App() {
     <DataProvider>
       <BrowserRouter>
         <Routes>
+          <Route index element={<Landing />} />
           <Route element={<MainLayout />}>
-            <Route index element={<Landing />} />
             <Route path="dashboard" element={<PublicDashboard />} />
             <Route path="projects" element={<Projects />} />
             <Route path="projects/:id" element={<ProjectDetail />} />

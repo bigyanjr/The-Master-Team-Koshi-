@@ -187,6 +187,7 @@ export function aggregateWardStats(wardNo, projects) {
     projectCount: wardProjects.length,
     totalBudget: wardProjects.reduce((s, p) => s + (p.allocatedBudget ?? 0), 0),
     totalSpent: wardProjects.reduce((s, p) => s + getTotalPaid(p), 0),
+    delayedCount: wardProjects.filter((p) => p.status === 'Delayed').length,
     avgProgress: wardProjects.length
       ? Math.round(wardProjects.reduce((s, p) => s + getProgressPercent(p), 0) / wardProjects.length)
       : 0,
@@ -210,6 +211,32 @@ export function getAllComplaints(projects) {
       wardNo: p.wardNo,
     }))
   );
+}
+
+export function getLastUpdatedDate(project) {
+  const dates = [
+    ...(project.payments ?? []).map((p) => p.date),
+    ...(project.proofs ?? []).map((p) => p.uploadedAt),
+  ].filter(Boolean);
+
+  if (!dates.length) return project.startDate || null;
+  return dates.reduce((latest, d) => (new Date(d) > new Date(latest) ? d : latest));
+}
+
+export function getDelayScore(project) {
+  if (project.status === 'Delayed') {
+    const days = project.deadline
+      ? Math.max(0, (Date.now() - new Date(project.deadline).getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+    return 10000 + days;
+  }
+  if (project.deadline && getProgressPercent(project) < 100) {
+    const deadline = new Date(project.deadline);
+    if (deadline < new Date()) {
+      return (Date.now() - deadline.getTime()) / (1000 * 60 * 60 * 24);
+    }
+  }
+  return 0;
 }
 
 export function getRecentActivity(projects, limit = 5) {
