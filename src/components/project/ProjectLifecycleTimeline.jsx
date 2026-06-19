@@ -1,7 +1,7 @@
 import {
   Wallet, Gavel, HardHat, PlayCircle, Banknote, Camera, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
-import { formatCurrency, formatDate, formatCompactCurrency } from '../../utils/formatters';
+import { formatDate, formatCompactCurrency } from '../../utils/formatters';
 
 function daysBefore(dateStr, days) {
   const d = new Date(dateStr);

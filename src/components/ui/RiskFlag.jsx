@@ -1,15 +1,27 @@
 import { AlertTriangle, AlertCircle, Info } from 'lucide-react';
 
 const severityConfig = {
-  high: { icon: AlertTriangle, color: 'red', bg: 'bg-red-50 border-red-200' },
-  medium: { icon: AlertCircle, color: 'amber', bg: 'bg-amber-50 border-amber-200' },
-  low: { icon: Info, color: 'blue', bg: 'bg-blue-50 border-blue-200' },
-};
-
-const textColors = {
-  red: 'text-red-700',
-  amber: 'text-amber-700',
-  blue: 'text-blue-700',
+  high: {
+    icon: AlertTriangle,
+    bg: 'bg-red-50/80 border-red-200/70',
+    title: 'text-red-800',
+    desc: 'text-slate-600',
+    iconColor: 'text-red-600',
+  },
+  medium: {
+    icon: AlertCircle,
+    bg: 'bg-amber-50/80 border-amber-200/70',
+    title: 'text-amber-900',
+    desc: 'text-slate-600',
+    iconColor: 'text-amber-600',
+  },
+  low: {
+    icon: Info,
+    bg: 'bg-blue-50/80 border-blue-200/70',
+    title: 'text-blue-900',
+    desc: 'text-slate-600',
+    iconColor: 'text-blue-600',
+  },
 };
 
 export default function RiskFlag({ flag, compact = false }) {
@@ -18,19 +30,19 @@ export default function RiskFlag({ flag, compact = false }) {
 
   if (compact) {
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${config.bg} ${textColors[config.color]}`}>
-        <Icon className="h-3 w-3" />
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${config.bg} ${config.title}`}>
+        <Icon className="h-3 w-3 shrink-0" />
         {flag.label}
       </span>
     );
   }
 
   return (
-    <div className={`flex gap-3 p-3 rounded-xl border ${config.bg}`}>
-      <Icon className={`h-5 w-5 shrink-0 mt-0.5 ${textColors[config.color]}`} />
-      <div>
-        <p className={`text-sm font-semibold ${textColors[config.color]}`}>{flag.label}</p>
-        <p className="text-xs text-slate-600 mt-0.5">{flag.description}</p>
+    <div className={`flex gap-3 p-3.5 rounded-lg border ${config.bg}`}>
+      <Icon className={`h-4 w-4 shrink-0 mt-0.5 ${config.iconColor}`} />
+      <div className="min-w-0">
+        <p className={`text-sm font-semibold leading-snug ${config.title}`}>{flag.label}</p>
+        <p className={`text-xs mt-1 leading-relaxed ${config.desc}`}>{flag.description}</p>
       </div>
     </div>
   );
@@ -39,15 +51,15 @@ export default function RiskFlag({ flag, compact = false }) {
 export function RiskFlagList({ flags, compact = false }) {
   if (!flags.length) {
     return (
-      <div className="text-sm text-emerald-600 font-medium flex items-center gap-2">
+      <div className="text-sm text-emerald-700 font-medium flex items-center gap-2 py-1">
         <span className="h-2 w-2 rounded-full bg-emerald-500" />
-        No risk flags detected
+        No transparency flags
       </div>
     );
   }
 
   return (
-    <div className={`flex ${compact ? 'flex-wrap gap-2' : 'flex-col gap-2'}`}>
+    <div className={`flex ${compact ? 'flex-wrap gap-1.5' : 'flex-col gap-2'}`}>
       {flags.map((flag) => (
         <RiskFlag key={flag.id} flag={flag} compact={compact} />
       ))}

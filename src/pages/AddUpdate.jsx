@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   CheckCircle, Eye, LayoutDashboard, ArrowRight, Banknote, TrendingUp,
@@ -9,6 +9,7 @@ import Button from '../components/ui/Button';
 import { StatusBadge } from '../components/ui/Badge';
 import ProgressBar from '../components/ui/ProgressBar';
 import FormSection, { FieldError, inputClass, PublicVisibilityWarning } from '../components/admin/FormSection';
+import FileUpload from '../components/ui/FileUpload';
 import {
   EMPTY_UPDATE_FORM,
   UPDATE_TYPES,
@@ -86,11 +87,6 @@ export default function AddUpdate() {
   const projectList = wardProjects.length ? wardProjects : projects;
   const selectedProject = projects.find((p) => p.id === form.projectId);
   const TypeIcon = form.updateType ? TYPE_ICONS[form.updateType] : FolderKanban;
-
-  useEffect(() => {
-    const projectId = searchParams.get('project');
-    if (projectId) setForm((f) => ({ ...f, projectId }));
-  }, [searchParams]);
 
   const update = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -342,19 +338,15 @@ export default function AddUpdate() {
                   placeholder="Official remarks for the public payment record…"
                 />
               </div>
-              <div>
-                <label htmlFor="paymentProofUrl" className="block text-sm font-medium text-slate-700 mb-1">
-                  Proof Document URL
-                </label>
-                <input
-                  id="paymentProofUrl"
-                  value={form.paymentProofUrl}
-                  onChange={(e) => update('paymentProofUrl', e.target.value)}
-                  className={inputClass(false)}
-                  placeholder="https://… (leave blank for demo placeholder)"
-                />
-                <p className="text-xs text-slate-400 mt-1">Supporting document link — also added to project proof gallery</p>
-              </div>
+              <FileUpload
+                id="paymentProofFile"
+                label="Payment proof document"
+                hint="Drop payment proof image or PDF here"
+                value={form.paymentProofFile}
+                onChange={(file) => update('paymentProofFile', file)}
+                storageFolder="proofs"
+              />
+              <p className="text-xs text-slate-400">Optional — uploaded file is also added to the project proof gallery</p>
             </div>
           </FormSection>
         )}
@@ -468,16 +460,15 @@ export default function AddUpdate() {
                 />
                 <FieldError message={errors.proofTitle} />
               </div>
-              <div>
-                <label htmlFor="proofUrl" className="block text-sm font-medium text-slate-700 mb-1">File URL</label>
-                <input
-                  id="proofUrl"
-                  value={form.proofUrl}
-                  onChange={(e) => update('proofUrl', e.target.value)}
-                  className={inputClass(false)}
-                  placeholder="https://… (leave blank for demo placeholder image)"
-                />
-              </div>
+              <FileUpload
+                id="proofFile"
+                label="Proof file"
+                hint="Drop image or PDF here"
+                value={form.proofFile}
+                onChange={(file) => update('proofFile', file)}
+                error={errors.proofFile}
+                storageFolder="proofs"
+              />
               <div>
                 <label htmlFor="proofRemarks" className="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
                 <textarea
@@ -539,18 +530,14 @@ export default function AddUpdate() {
                 />
                 <FieldError message={errors.completionRemarks} />
               </div>
-              <div>
-                <label htmlFor="completionProofUrl" className="block text-sm font-medium text-slate-700 mb-1">
-                  Completion Proof URL
-                </label>
-                <input
-                  id="completionProofUrl"
-                  value={form.completionProofUrl}
-                  onChange={(e) => update('completionProofUrl', e.target.value)}
-                  className={inputClass(false)}
-                  placeholder="https://… (leave blank for demo placeholder)"
-                />
-              </div>
+              <FileUpload
+                id="completionProofFile"
+                label="Completion proof"
+                hint="Drop completion photo or certificate PDF here"
+                value={form.completionProofFile}
+                onChange={(file) => update('completionProofFile', file)}
+                storageFolder="proofs"
+              />
             </div>
           </FormSection>
         )}

@@ -1,53 +1,24 @@
 import { Link } from 'react-router-dom';
-import { PlusCircle, Banknote, Camera, MessageSquareWarning } from 'lucide-react';
+import { FileText, PlusCircle, Camera, MessageSquareWarning } from 'lucide-react';
 
 const actions = [
-  {
-    to: '/admin/add-project',
-    label: 'Add New Project',
-    desc: 'Register a ward project for public tracking',
-    icon: PlusCircle,
-    color: 'bg-brand-600 hover:bg-brand-700 text-white',
-  },
-  {
-    to: '/admin/add-payment',
-    label: 'Add Payment Update',
-    desc: 'Record a milestone payment release',
-    icon: Banknote,
-    color: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-  },
-  {
-    to: '/admin/upload-proof',
-    label: 'Upload Proof',
-    desc: 'Add before/during/after photos or documents',
-    icon: Camera,
-    color: 'bg-teal-600 hover:bg-teal-700 text-white',
-  },
-  {
-    to: '/admin/complaints',
-    label: 'Review Complaints',
-    desc: 'Respond to citizen transparency reports',
-    icon: MessageSquareWarning,
-    color: 'bg-amber-600 hover:bg-amber-700 text-white',
-  },
+  { to: '/admin/add-update', label: 'Post Update', icon: FileText, color: 'bg-brand-800' },
+  { to: '/admin/add-project', label: 'Add Project', icon: PlusCircle, color: 'bg-brand-700' },
+  { to: '/admin/upload-proof', label: 'Upload Proof', icon: Camera, color: 'bg-emerald-700' },
+  { to: '/admin/complaints', label: 'Review Complaints', icon: MessageSquareWarning, color: 'bg-amber-600' },
 ];
 
 export default function AdminQuickActions() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-      {actions.map(({ to, label, desc, icon: Icon, color }) => (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {actions.map(({ to, label, icon: Icon, color }) => (
         <Link
           key={to}
           to={to}
-          className={`group flex items-start gap-3 p-4 rounded-2xl ${color} shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5`}
+          className={`flex flex-col items-center justify-center gap-2 p-5 rounded-2xl ${color} text-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-center`}
         >
-          <div className="p-2 rounded-xl bg-white/20 shrink-0">
-            <Icon className="h-5 w-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="font-semibold text-sm leading-tight">{label}</p>
-            <p className="text-xs opacity-80 mt-1 leading-snug">{desc}</p>
-          </div>
+          <Icon className="h-6 w-6 opacity-90" />
+          <span className="text-sm font-bold">{label}</span>
         </Link>
       ))}
     </div>

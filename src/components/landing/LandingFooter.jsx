@@ -1,35 +1,53 @@
 import { Link } from 'react-router-dom';
-import { Shield, Heart } from 'lucide-react';
+import BrandLogo from '../layout/BrandLogo';
+import { DEMO_PROJECT_IDS, MUNICIPALITY_DEMO, PRODUCT_NAME, TAGLINE } from '../../config/branding';
 
 export default function LandingFooter() {
   return (
-    <footer className="relative bg-slate-950 text-white overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-950 via-slate-950 to-emerald-950 opacity-80" />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-emerald-500/10 blur-3xl rounded-full" />
+    <footer className="relative bg-brand-950 text-white overflow-hidden">
+      <div className="absolute inset-0 opacity-40" style={{
+        backgroundImage: 'radial-gradient(rgb(148 163 184 / 0.15) 1px, transparent 1px)',
+        backgroundSize: '24px 24px',
+      }} />
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="flex flex-col items-center text-center max-w-2xl mx-auto">
-          <div className="flex items-center gap-2 mb-4">
-            <Shield className="h-6 w-6 text-emerald-400" />
-            <span className="font-bold text-xl">WardWatch</span>
+      <div className="relative page-container py-14 sm:py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+          <div className="sm:col-span-2 lg:col-span-1">
+            <BrandLogo to="/" size="lg" />
+            <p className="text-sm text-slate-400 leading-relaxed mt-4 max-w-xs">
+              Itahari ward budget transparency — for citizens, ward teams, and public accountability.
+            </p>
           </div>
-          <p className="text-lg sm:text-xl font-medium text-slate-200 leading-relaxed flex items-center gap-2 flex-wrap justify-center">
-            <Heart className="h-5 w-5 text-emerald-400 shrink-0" />
-            Built for Good Governance, Transparency, and Citizen Accountability.
-          </p>
-          <p className="text-sm text-slate-400 mt-4">
-            Civic-tech demo · Kathmandu Metropolitan City · Hackathon MVP
-          </p>
+          <div>
+            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-4">Public Portal</h4>
+            <ul className="space-y-2.5 text-sm text-slate-400">
+              <li><Link to="/dashboard" className="hover:text-white transition-colors">Dashboard</Link></li>
+              <li><Link to="/projects" className="hover:text-white transition-colors">All Projects</Link></li>
+              <li><Link to="/ask" className="hover:text-white transition-colors">Citizen Query Bot</Link></li>
+              <li><Link to="/complaints" className="hover:text-white transition-colors">Citizen Feedback</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-4">Demo</h4>
+            <ul className="space-y-2.5 text-sm text-slate-400">
+              <li><Link to={`/qr-demo/${DEMO_PROJECT_IDS.qrScan}`} className="hover:text-white transition-colors">Scan QR Demo</Link></li>
+              <li><Link to={`/projects/${DEMO_PROJECT_IDS.drainage}`} className="hover:text-white transition-colors">Risk Demo Project</Link></li>
+              <li>
+                <Link
+                  to="/login"
+                  state={{ from: '/admin', requiresAdmin: true }}
+                  className="hover:text-white transition-colors"
+                >
+                  Ward Admin Login
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-400">
-          <p>© 2025 WardWatch. Public Money, Public Visibility.</p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link to="/dashboard" className="hover:text-emerald-400 transition-colors">Dashboard</Link>
-            <Link to="/projects" className="hover:text-emerald-400 transition-colors">Projects</Link>
-            <Link to="/complaints" className="hover:text-emerald-400 transition-colors">Complaints</Link>
-            <Link to="/admin" className="hover:text-emerald-400 transition-colors">Admin</Link>
-          </div>
+        <div className="mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between gap-3 text-xs text-slate-500">
+          <p>© 2025 {PRODUCT_NAME} · {TAGLINE}</p>
+          <p>{MUNICIPALITY_DEMO} · Hackathon MVP</p>
         </div>
       </div>
     </footer>

@@ -18,4 +18,19 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    files: [
+      '**/context/**',
+      '**/services/**',
+      '**/utils/**',
+      '**/components/admin/**',
+      '**/components/auth/**',
+      '**/components/ui/**',
+      '**/components/project/QRCodePanel.jsx',
+      '**/components/project/ProjectLifecycleTimeline.jsx',
+    ],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

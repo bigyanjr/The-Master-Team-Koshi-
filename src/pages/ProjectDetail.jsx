@@ -15,22 +15,32 @@ import ProjectLifecycleTimeline from '../components/project/ProjectLifecycleTime
 import QRCodePanel from '../components/project/QRCodePanel';
 import BudgetOverview from '../components/project/BudgetOverview';
 import ContractorSection from '../components/project/ContractorSection';
-import CitizenExplanationPanel from '../components/project/CitizenExplanationPanel';
+import GovernanceRiskPanel from '../components/project/GovernanceRiskPanel';
+import AISummaryPanel from '../components/project/AISummaryPanel';
 import EmptyState from '../components/ui/EmptyState';
-import { formatDate, getWardByNo } from '../utils/formatters';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { formatDate, formatCurrency, getWardByNo } from '../utils/formatters';
 import {
   calculateTrustScore,
   getRiskFlags,
   getRiskLevel,
   getTotalPaid,
   getBudgetUsedPercent,
+  generateRiskExplanation,
 } from '../utils/riskEngine';
 
 export default function ProjectDetail() {
   const { id } = useParams();
-  const { projects, wards } = useData();
-
+  const { projects, wards, dataLoading } = useData();
   const project = projects.find((p) => p.id === id);
+
+  if (dataLoading) {
+    return (
+      <div className="min-h-[60vh] dashboard-bg flex items-center justify-center">
+        <LoadingSpinner label="Loading project…" />
+      </div>
+    );
+  }
 
   if (!project) {
     return (
@@ -44,9 +54,10 @@ export default function ProjectDetail() {
   }
 
   const ward = getWardByNo(wards, project.wardNo);
-  const trustScore = calculateTrustScore(project);
-  const flags = getRiskFlags(project);
-  const riskLevel = getRiskLevel(project);
+  const trustScore = calculateTrustScore(project, projects);
+  const flags = getRiskFlags(project, projects);
+  const riskLevel = getRiskLevel(project, projects);
+  const riskExplanation = generateRiskExplanation(project, projects);
   const totalPaid = getTotalPaid(project);
   const budgetUsed = getBudgetUsedPercent(project);
   const remaining = Math.max(0, (project.allocatedBudget ?? 0) - totalPaid);
@@ -55,8 +66,8 @@ export default function ProjectDetail() {
   const payments = project.payments ?? [];
 
   return (
-    <div className="min-h-screen bg-slate-50/80">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
+    <div className="min-h-screen dashboard-bg">
+      <div className="page-container py-6 sm:py-8 section-gap">
         {/* Breadcrumb */}
         <Link
           to="/projects"
@@ -66,12 +77,34 @@ export default function ProjectDetail() {
           Back to All Projects
         </Link>
 
+        {/* Plain-language summary */}
+        <div className={`rounded-2xl border-2 p-5 sm:p-6 card-shadow ${
+          riskLevel.label === 'High Risk'
+            ? 'border-red-200 bg-red-50/50'
+            : riskLevel.label === 'Medium Risk'
+              ? 'border-amber-200 bg-amber-50/40'
+              : 'border-emerald-200 bg-emerald-50/40'
+        }`}>
+          <p className="text-sm sm:text-base text-brand-950 leading-relaxed font-medium">
+            This project has{' '}
+            <span className="font-bold">{formatCurrency(project.allocatedBudget)}</span> budget,{' '}
+            <span className="font-bold">{formatCurrency(totalPaid)}</span> paid,{' '}
+            <span className="font-bold">{project.progressPercent}%</span> progress, and{' '}
+            <span className={`font-bold ${
+              riskLevel.label === 'High Risk' ? 'text-red-700' :
+              riskLevel.label === 'Medium Risk' ? 'text-amber-700' : 'text-emerald-700'
+            }`}>
+              {riskLevel.label}
+            </span>.
+          </p>
+        </div>
+
         {/* ── 1. Project Header ── */}
-        <section className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden card-shadow-lg">
-          <div className={`h-2 bg-gradient-to-r ${
-            riskLevel.label === 'High Risk' ? 'from-red-500 via-red-400 to-amber-400' :
-            riskLevel.label === 'Medium Risk' ? 'from-amber-400 via-amber-300 to-emerald-400' :
-            'from-brand-600 via-emerald-500 to-teal-400'
+        <section className="rounded-xl border border-slate-200/90 bg-white overflow-hidden card-shadow">
+          <div className={`h-1 ${
+            riskLevel.label === 'High Risk' ? 'bg-red-500' :
+            riskLevel.label === 'Medium Risk' ? 'bg-amber-500' :
+            'bg-emerald-500'
           }`} />
 
           <div className="p-6 sm:p-8">
@@ -111,7 +144,7 @@ export default function ProjectDetail() {
               </div>
 
               {/* Trust score panel */}
-              <div className="flex flex-col items-center p-6 rounded-2xl bg-gradient-to-br from-slate-50 to-brand-50/50 border border-slate-200/80 shrink-0 lg:min-w-[200px]">
+              <div className="flex flex-col items-center p-5 rounded-xl bg-slate-50/80 border border-slate-200/80 shrink-0 lg:min-w-[180px]">
                 <TrustScoreRing score={trustScore} size="lg" />
                 <div className="mt-4 flex items-center gap-1.5 text-xs text-slate-500">
                   <Shield className="h-3.5 w-3.5" />
@@ -151,8 +184,11 @@ export default function ProjectDetail() {
               <ProjectLifecycleTimeline project={project} />
             </Card>
 
-            {/* ── 4. Contractor ── */}
+            {/* ── Contractor ── */}
             <ContractorSection project={project} />
+
+            {/* ── Governance Risk Detector ── */}
+            <GovernanceRiskPanel project={project} allProjects={projects} />
 
             {/* ── 5. Payment History ── */}
             <Card padding={false}>
@@ -175,21 +211,24 @@ export default function ProjectDetail() {
               <ProofGallery proofs={proofs} />
             </Card>
 
-            {/* ── 10. AI Citizen Explanation ── */}
-            <CitizenExplanationPanel project={project} />
+            {/* ── AI Transparency Summary ── */}
+            <AISummaryPanel project={project} />
           </div>
 
           {/* ── Sidebar ── */}
           <div className="space-y-6">
             {/* ── 9. QR Code ── */}
-            <QRCodePanel projectId={project.id} projectTitle={project.title} />
+            <QRCodePanel projectId={project.id} />
 
             {/* ── 7. Risk Flags ── */}
             <Card className={flags.length > 0 ? 'border-amber-200/80' : ''}>
               <CardHeader
-                title="Risk Flags"
-                subtitle={flags.length ? `${flags.length} concern(s) detected` : 'All checks passed'}
+                title="Transparency Flags"
+                subtitle={flags.length ? `${flags.length} item(s) need verification` : 'No concerns flagged'}
               />
+              {flags.length > 0 && (
+                <p className="text-xs text-slate-600 leading-relaxed mb-3 px-1">{riskExplanation}</p>
+              )}
               <RiskFlagList flags={flags} />
             </Card>
 
@@ -227,7 +266,7 @@ export default function ProjectDetail() {
                 </div>
               )}
               <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-                <Link to="/complaints" className="text-sm font-medium text-brand-700 hover:text-brand-800">
+                <Link to={`/complaints?project=${project.id}`} className="text-sm font-medium text-brand-700 hover:text-brand-800">
                   File a complaint →
                 </Link>
               </div>

@@ -2,9 +2,10 @@ import { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   MessageSquareHeart, Send, CheckCircle, Info, Shield,
-  FolderKanban, Calendar, Tag, User,
+  FolderKanban, Calendar, Tag, User, FileText,
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
 import { StatusBadge } from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
@@ -16,6 +17,8 @@ import {
   getComplaintCategoryLabel,
   getCitizenDisplayName,
 } from '../services/complaintService';
+import FileUpload from '../components/ui/FileUpload';
+import { resolveFileUrl, resolveFileName, isImageFileType } from '../services/uploadService';
 import { formatDate, getWardByNo } from '../utils/formatters';
 import { getAllComplaints } from '../utils/riskEngine';
 
@@ -63,6 +66,33 @@ function ComplaintCard({ complaint, project, ward }) {
 
       <p className="text-sm text-slate-700 leading-relaxed">{complaint.message}</p>
 
+      {resolveFileUrl(complaint) && (
+        <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+            Attached evidence
+          </p>
+          {isImageFileType(complaint.evidence?.fileType) || resolveFileUrl(complaint)?.startsWith('data:image') ? (
+            <a href={resolveFileUrl(complaint)} target="_blank" rel="noopener noreferrer" className="block">
+              <img
+                src={resolveFileUrl(complaint)}
+                alt={resolveFileName(complaint) || 'Evidence'}
+                className="max-h-40 rounded-md border border-slate-200 object-cover"
+              />
+            </a>
+          ) : (
+            <a
+              href={resolveFileUrl(complaint)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-700 hover:underline"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              {resolveFileName(complaint) || 'View evidence'}
+            </a>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
         <span className="inline-flex items-center gap-1">
           <User className="h-3 w-3" />
@@ -76,6 +106,7 @@ function ComplaintCard({ complaint, project, ward }) {
 
 export default function Complaints() {
   const { projects, wards, addComplaint } = useData();
+  const { profile, isAuthenticated } = useAuth();
   const [searchParams] = useSearchParams();
 
   const [form, setForm] = useState({
@@ -85,6 +116,16 @@ export default function Complaints() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const displayForm = useMemo(() => {
+    if (!profile) return form;
+    return {
+      ...form,
+      citizenName: form.citizenName || profile.fullName || '',
+      email: form.email || profile.email || '',
+      phone: form.phone || profile.phone || '',
+    };
+  }, [form, profile]);
 
   const complaints = useMemo(
     () => getAllComplaints(projects).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
@@ -100,9 +141,14 @@ export default function Complaints() {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
-  const handleSubmit = (e) => {
+  const handleEvidenceChange = (file) => {
+    update('evidenceFile', file);
+    if (errors.evidence) setErrors((prev) => ({ ...prev, evidence: undefined }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const validation = validateComplaintForm(form);
+    const validation = validateComplaintForm(displayForm);
     if (!validation.valid) {
       setErrors(validation.errors);
       return;
@@ -112,16 +158,28 @@ export default function Complaints() {
     setErrors({});
 
     try {
-      addComplaint(form);
+      await addComplaint({
+        ...displayForm,
+        submittedByUid: profile?.uid || null,
+      });
       setSubmitted(true);
-      setForm({ ...EMPTY_COMPLAINT_FORM, projectId: form.projectId });
+      setForm({
+        ...EMPTY_COMPLAINT_FORM,
+        projectId: form.projectId,
+        ...(profile ? {
+          citizenName: profile.fullName || '',
+          email: profile.email || '',
+          phone: profile.phone || '',
+        } : {}),
+      });
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+    <div className="dashboard-bg min-h-screen">
+    <div className="page-container py-8 sm:py-10">
       {/* Header */}
       <div className="mb-8">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-semibold mb-4">
@@ -129,10 +187,10 @@ export default function Complaints() {
           Civic participation
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-          Citizen Feedback
+          Citizen Feedback for Itahari Projects
         </h1>
         <p className="text-slate-500 mt-2 max-w-2xl leading-relaxed">
-          Share concerns about ward projects openly. Your voice helps keep public spending accountable
+          Share concerns about Itahari ward projects openly. Your voice helps keep public spending accountable
           — every submission is reviewed by ward officials.
         </p>
       </div>
@@ -144,8 +202,8 @@ export default function Complaints() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-10">
         {/* Form */}
         <div className="lg:col-span-2">
-          <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden card-shadow-lg sticky top-24">
-            <div className="px-5 sm:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-brand-50/80 to-slate-50">
+          <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden card-shadow-lg sticky top-24 flex flex-col max-h-[calc(100vh-6.5rem)]">
+            <div className="px-5 sm:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-brand-50/80 to-slate-50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-xl bg-brand-100 text-brand-700">
                   <MessageSquareHeart className="h-4 w-4" />
@@ -157,7 +215,7 @@ export default function Complaints() {
               </div>
             </div>
 
-            <div className="p-5 sm:p-6">
+            <div className="overflow-y-auto flex-1 p-5 sm:p-6 overscroll-contain">
               {submitted ? (
                 <div className="text-center py-4">
                   <div className="inline-flex p-3 rounded-full bg-emerald-100 text-emerald-600 mb-4">
@@ -233,7 +291,7 @@ export default function Complaints() {
 
                   <div className="pt-2 border-t border-slate-100">
                     <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">
-                      Optional contact details
+                      {isAuthenticated ? 'Your contact details (auto-filled)' : 'Optional contact details'}
                     </p>
                     <div className="space-y-3">
                       <div>
@@ -242,7 +300,7 @@ export default function Complaints() {
                         </label>
                         <input
                           id="citizenName"
-                          value={form.citizenName}
+                          value={displayForm.citizenName}
                           onChange={(e) => update('citizenName', e.target.value)}
                           className={inputClass(false)}
                           placeholder="Leave blank to submit anonymously"
@@ -256,7 +314,7 @@ export default function Complaints() {
                           <input
                             id="phone"
                             type="tel"
-                            value={form.phone}
+                            value={displayForm.phone}
                             onChange={(e) => update('phone', e.target.value)}
                             className={inputClass(false)}
                             placeholder="98XXXXXXXX"
@@ -269,7 +327,7 @@ export default function Complaints() {
                           <input
                             id="email"
                             type="email"
-                            value={form.email}
+                            value={displayForm.email}
                             onChange={(e) => update('email', e.target.value)}
                             className={inputClass(errors.email)}
                             placeholder="you@example.com"
@@ -280,25 +338,24 @@ export default function Complaints() {
                     </div>
                   </div>
 
-                  <div>
-                    <label htmlFor="evidenceUrl" className="block text-sm font-medium text-slate-700 mb-1">
-                      Evidence URL
-                    </label>
-                    <input
-                      id="evidenceUrl"
-                      value={form.evidenceUrl}
-                      onChange={(e) => update('evidenceUrl', e.target.value)}
-                      className={inputClass(false)}
-                      placeholder="Link to photo or document (optional)"
-                    />
-                    <p className="text-xs text-slate-400 mt-1">
-                      Share a link to supporting evidence — file upload coming in a future release
-                    </p>
-                  </div>
+                  <FileUpload
+                    id="complaintEvidence"
+                    label="Supporting evidence"
+                    hint="Drop image or PDF here"
+                    value={form.evidenceFile}
+                    onChange={handleEvidenceChange}
+                    error={errors.evidence}
+                    storageFolder="complaints"
+                  />
+                  <p className="text-xs text-slate-400">
+                    Optional — attach a photo or PDF to support your concern
+                  </p>
 
-                  <Button type="submit" disabled={submitting} icon={Send} className="w-full">
-                    {submitting ? 'Submitting…' : 'Submit feedback'}
-                  </Button>
+                  <div className="sticky bottom-0 pt-2 pb-1 bg-white">
+                    <Button type="submit" disabled={submitting} icon={Send} className="w-full">
+                      {submitting ? 'Submitting…' : 'Submit feedback'}
+                    </Button>
+                  </div>
                 </form>
               )}
             </div>
@@ -306,7 +363,7 @@ export default function Complaints() {
         </div>
 
         {/* List */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 lg:max-h-[calc(100vh-6.5rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
           <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Public feedback board</h2>
@@ -341,6 +398,7 @@ export default function Complaints() {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }

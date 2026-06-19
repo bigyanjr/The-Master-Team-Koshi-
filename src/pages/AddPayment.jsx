@@ -18,9 +18,9 @@ export default function AddPayment() {
     remarks: '',
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    addPayment(form);
+    await addPayment(form);
     setSuccess(true);
     setTimeout(() => navigate('/admin'), 1500);
   };

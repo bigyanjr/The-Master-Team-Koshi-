@@ -3,50 +3,12 @@
  * Each project carries nested payments, proofs, and complaints.
  */
 
-const FLAG_DEFS = {
-  PAYMENT_WITHOUT_PROOF: {
-    id: 'PAYMENT_WITHOUT_PROOF',
-    label: 'Payment without proof',
-    severity: 'high',
-    description: 'Payments have been released but no supporting proof has been uploaded.',
-    penalty: 20,
-  },
-  DELAYED_PROJECT: {
-    id: 'DELAYED_PROJECT',
-    label: 'Delayed project',
-    severity: 'high',
-    description: 'The project deadline has passed but work is not yet complete.',
-    penalty: 20,
-  },
-  HIGH_CITIZEN_CONCERN: {
-    id: 'HIGH_CITIZEN_CONCERN',
-    label: 'High citizen concern',
-    severity: 'high',
-    description: 'More than five citizen complaints have been filed against this project.',
-    penalty: 15,
-  },
-  BUDGET_PROGRESS_MISMATCH: {
-    id: 'BUDGET_PROGRESS_MISMATCH',
-    label: 'Budget-progress mismatch',
-    severity: 'high',
-    description: 'Over 70% of the budget is spent while physical progress remains below 50%.',
-    penalty: 20,
-  },
-  TENDER_EXCEEDS_ALLOCATION: {
-    id: 'TENDER_EXCEEDS_ALLOCATION',
-    label: 'Tender exceeds allocation',
-    severity: 'medium',
-    description: 'The awarded tender amount exceeds the ward allocated budget.',
-    penalty: 15,
-  },
-  COMPLETION_PROOF_MISSING: {
-    id: 'COMPLETION_PROOF_MISSING',
-    label: 'Completion proof missing',
-    severity: 'medium',
-    description: 'Project is marked completed but lacks after photos or completion documents.',
-    penalty: 10,
-  },
-};
+import {
+  detectCorruptionRisks,
+  getCorruptionRiskScore,
+  getCorruptionRiskLevel,
+  generateRiskExplanation,
+} from './corruptionRiskDetector';
 
 function payments(project) {
   return project.payments ?? [];
@@ -74,77 +36,19 @@ export function getProgressPercent(project) {
   return project.progressPercent ?? 0;
 }
 
-function isDeadlinePassed(project) {
-  if (!project.deadline) return false;
-  const deadline = new Date(project.deadline);
-  deadline.setHours(23, 59, 59, 999);
-  return deadline < new Date();
+export function getRiskFlags(project, allProjects = []) {
+  return detectCorruptionRisks(project, allProjects);
 }
 
-function hasCompletionProof(project) {
-  return proofs(project).some(
-    (p) => p.type === 'after' || p.type === 'document'
-  );
+export function calculateTrustScore(project, allProjects = []) {
+  return getCorruptionRiskScore(project, allProjects);
 }
 
-export function getRiskFlags(project) {
-  const flags = [];
-  const paid = getTotalPaid(project);
-  const progress = getProgressPercent(project);
-  const budgetUsed = getBudgetUsedPercent(project);
-  const complaintCount = complaints(project).length;
-  const projectProofs = proofs(project);
-  const status = project.status ?? '';
-
-  if (paid > 0 && projectProofs.length === 0) {
-    flags.push(FLAG_DEFS.PAYMENT_WITHOUT_PROOF);
-  }
-
-  if (isDeadlinePassed(project) && progress < 100) {
-    flags.push(FLAG_DEFS.DELAYED_PROJECT);
-  }
-
-  if (complaintCount > 5) {
-    flags.push(FLAG_DEFS.HIGH_CITIZEN_CONCERN);
-  }
-
-  if (progress < 50 && budgetUsed > 70) {
-    flags.push(FLAG_DEFS.BUDGET_PROGRESS_MISMATCH);
-  }
-
-  if ((project.tenderAmount ?? 0) > (project.allocatedBudget ?? 0)) {
-    flags.push(FLAG_DEFS.TENDER_EXCEEDS_ALLOCATION);
-  }
-
-  if (status === 'Completed' && !hasCompletionProof(project)) {
-    flags.push(FLAG_DEFS.COMPLETION_PROOF_MISSING);
-  }
-
-  return flags;
+export function getRiskLevel(project, allProjects = []) {
+  return getCorruptionRiskLevel(project, allProjects);
 }
 
-export function calculateTrustScore(project) {
-  let score = 100;
-  const flags = getRiskFlags(project);
-
-  flags.forEach((flag) => {
-    score -= flag.penalty ?? 0;
-  });
-
-  return Math.max(0, Math.min(100, score));
-}
-
-export function getRiskLevel(project) {
-  const score = calculateTrustScore(project);
-
-  if (score >= 80) {
-    return { label: 'Low Risk', color: 'emerald', score };
-  }
-  if (score >= 50) {
-    return { label: 'Medium Risk', color: 'amber', score };
-  }
-  return { label: 'High Risk', color: 'red', score };
-}
+export { generateRiskExplanation };
 
 export function getTrustLabel(score) {
   if (score >= 80) return { label: 'Low Risk', color: 'emerald' };
@@ -152,31 +56,23 @@ export function getTrustLabel(score) {
   return { label: 'High Risk', color: 'red' };
 }
 
-export function getProjectHealth(project) {
-  const trustScore = calculateTrustScore(project);
-  const riskLevel = getRiskLevel(project);
-  const flags = getRiskFlags(project);
-  const budgetUsedPercent = getBudgetUsedPercent(project);
-  const progressPercent = getProgressPercent(project);
-  const totalPaid = getTotalPaid(project);
-
-  let summary = 'Project is on track with no major risk flags.';
-  if (flags.length === 1) {
-    summary = `One risk flag active: ${flags[0].label}.`;
-  } else if (flags.length > 1) {
-    summary = `${flags.length} risk flags active — review recommended.`;
-  }
+export function getProjectHealth(project, allProjects = []) {
+  const trustScore = calculateTrustScore(project, allProjects);
+  const riskLevel = getRiskLevel(project, allProjects);
+  const flags = getRiskFlags(project, allProjects);
+  const explanation = generateRiskExplanation(project, allProjects);
 
   return {
     trustScore,
     riskLevel,
     flags,
-    budgetUsedPercent,
-    progressPercent,
-    totalPaid,
+    budgetUsedPercent: getBudgetUsedPercent(project),
+    progressPercent: getProgressPercent(project),
+    totalPaid: getTotalPaid(project),
     complaintCount: complaints(project).length,
     proofCount: proofs(project).length,
-    summary,
+    summary: explanation,
+    explanation,
   };
 }
 
@@ -192,7 +88,7 @@ export function aggregateWardStats(wardNo, projects) {
       ? Math.round(wardProjects.reduce((s, p) => s + getProgressPercent(p), 0) / wardProjects.length)
       : 0,
     avgTrust: wardProjects.length
-      ? Math.round(wardProjects.reduce((s, p) => s + calculateTrustScore(p), 0) / wardProjects.length)
+      ? Math.round(wardProjects.reduce((s, p) => s + calculateTrustScore(p, projects), 0) / wardProjects.length)
       : 0,
   };
 }

@@ -1,48 +1,81 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50: #eff6ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-200: #bfdbfe;
-  --color-brand-500: #3b82f6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
-  --color-brand-800: #1e40af;
-  --color-brand-900: #1e3a8a;
-  --color-brand-950: #172554;
+  --color-brand-50: #f0f4f8;
+  --color-brand-100: #dce4ef;
+  --color-brand-200: #b8c9dc;
+  --color-brand-500: #3d6a8a;
+  --color-brand-600: #2d5470;
+  --color-brand-700: #234459;
+  --color-brand-800: #1a3344;
+  --color-brand-900: #122636;
+  --color-brand-950: #0c1923;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
   html {
     scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
   }
 
   body {
-    @apply bg-slate-50 text-slate-800 antialiased;
+    @apply bg-white text-slate-800 antialiased;
     font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1, h2, h3, h4 {
+    @apply text-slate-900 tracking-tight;
   }
 
   ::selection {
-    @apply bg-brand-200 text-brand-900;
+    @apply bg-brand-200/80 text-brand-900;
   }
 }
 
 @layer utilities {
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .section-gap {
+    @apply space-y-8 sm:space-y-10;
+  }
+
   .card-shadow {
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+    box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+  }
+
+  .card-shadow-md {
+    box-shadow: 0 4px 6px -1px rgb(15 23 42 / 0.05), 0 2px 4px -2px rgb(15 23 42 / 0.04);
   }
 
   .card-shadow-lg {
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    box-shadow: 0 10px 15px -3px rgb(15 23 42 / 0.06), 0 4px 6px -4px rgb(15 23 42 / 0.04);
   }
 
   .gradient-hero {
-    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 40%, #065f46 100%);
+    background: linear-gradient(135deg, #122636 0%, #1a3344 45%, #1e4038 100%);
   }
 
   .gradient-text {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #1e40af, #059669);
+    background-image: linear-gradient(135deg, #234459, #047857);
+  }
+
+  .dashboard-bg {
+    background-color: #f8fafc;
+    background-image: radial-gradient(rgb(148 163 184 / 0.08) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .civic-card {
+    @apply rounded-2xl border border-slate-200/90 bg-white;
+    box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+  }
+
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/30 focus-visible:ring-offset-2;
   }
 }

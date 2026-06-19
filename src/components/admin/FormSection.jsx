@@ -27,8 +27,8 @@ export function FieldError({ message }) {
 }
 
 export function inputClass(hasError) {
-  return `w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 ${
-    hasError ? 'border-red-300 bg-red-50/30' : 'border-slate-200 bg-white'
+  return `w-full px-3 py-2.5 rounded-lg border text-sm bg-white transition-colors focus:outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-400 ${
+    hasError ? 'border-red-300 bg-red-50/30' : 'border-slate-200 hover:border-slate-300'
   }`;
 }
 

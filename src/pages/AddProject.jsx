@@ -4,7 +4,9 @@ import {
   CheckCircle, FileText, Wallet, HardHat, Calendar, MapPin, Eye, ArrowRight, LayoutDashboard,
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
+import FileUpload from '../components/ui/FileUpload';
 import { StatusBadge, RiskLevelBadge } from '../components/ui/Badge';
 import ProgressBar from '../components/ui/ProgressBar';
 import FormSection, { FieldError, inputClass, PublicVisibilityWarning } from '../components/admin/FormSection';
@@ -18,13 +20,15 @@ import { formatCurrency, getWardByNo } from '../utils/formatters';
 import { calculateTrustScore, getRiskLevel } from '../utils/riskEngine';
 
 export default function AddProject() {
-  const { wards, addProject, demoAdminWard } = useData();
+  const { wards, addProject, addProof, demoAdminWard, projects } = useData();
+  const { profile } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
     ...EMPTY_PROJECT_FORM,
     wardNo: String(demoAdminWard),
   });
+  const [initialDocument, setInitialDocument] = useState(null);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState(null);
@@ -34,7 +38,7 @@ export default function AddProject() {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validation = validateProjectForm(form);
     if (!validation.valid) {
@@ -46,7 +50,17 @@ export default function AddProject() {
     setErrors({});
 
     try {
-      const result = addProject(form);
+      const result = await addProject(form);
+      if (initialDocument?.fileUrl) {
+        await addProof({
+          projectId: result.id,
+          title: 'Initial project document or location photo',
+          type: 'before',
+          uploadedAt: new Date().toISOString().split('T')[0],
+          uploadedBy: profile?.uid || null,
+          ...initialDocument,
+        });
+      }
       setCreated(result);
     } finally {
       setSubmitting(false);
@@ -56,8 +70,8 @@ export default function AddProject() {
   if (created) {
     const { id, project } = created;
     const ward = getWardByNo(wards, project.wardNo);
-    const trust = calculateTrustScore(project);
-    const risk = getRiskLevel(project);
+    const trust = calculateTrustScore(project, projects);
+    const risk = getRiskLevel(project, projects);
 
     return (
       <div className="space-y-6 max-w-2xl">
@@ -346,6 +360,17 @@ export default function AddProject() {
               </div>
             </div>
           </div>
+        </FormSection>
+
+        <FormSection icon={FileText} title="Optional attachment" subtitle="Initial location photo or project document">
+          <FileUpload
+            id="initialProjectDocument"
+            label="Initial project document or location photo"
+            hint="Drop image or PDF here"
+            value={initialDocument}
+            onChange={setInitialDocument}
+            storageFolder="projects"
+          />
         </FormSection>
 
         <div className="flex flex-wrap gap-3 pt-2">

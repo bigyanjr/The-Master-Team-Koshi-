@@ -1,344 +1,291 @@
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
-  Settings,
-  EyeOff,
-  FileSearch,
-  CameraOff,
   Wallet,
   Gavel,
   CreditCard,
   Image,
   MessageSquare,
-  AlertTriangle,
-  QrCode,
-  ShieldCheck,
-  Sparkles,
-  ChevronRight,
   Building2,
-  FolderKanban,
-  Banknote,
-  Zap,
+  Users,
+  Landmark,
+  ScanLine,
+  Bot,
+  ShieldCheck,
+  ChevronRight,
+  QrCode,
+  Sparkles,
+  AlertTriangle,
+  Upload,
+  Brain,
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import Button from '../components/ui/Button';
 import LandingNav from '../components/landing/LandingNav';
 import LandingFooter from '../components/landing/LandingFooter';
+import { getProjectScanUrl } from '../utils/qrUrl';
+import { DEMO_PROJECT_IDS, PRODUCT_NAME, MUNICIPALITY_DEMO } from '../config/branding';
 
-const problems = [
+const flowStrip = [
+  { icon: Wallet, label: 'Budget' },
+  { icon: Gavel, label: 'Tender' },
+  { icon: Building2, label: 'Contractor' },
+  { icon: CreditCard, label: 'Payment' },
+  { icon: Image, label: 'Proof' },
+  { icon: MessageSquare, label: 'Citizen Feedback' },
+];
+
+const audienceCards = [
   {
-    icon: EyeOff,
-    title: 'Citizens do not know where local budget goes',
-    desc: 'Ward allocations are published in dense PDFs or notice boards that most residents never see or understand.',
-    color: 'from-red-500/10 to-orange-500/10',
-    iconColor: 'text-red-600 bg-red-50',
+    icon: Users,
+    title: 'Citizens',
+    desc: 'View budget, projects, proof, complaints, and risk flags.',
+    color: 'from-blue-50 to-white border-blue-100',
+    iconBg: 'bg-blue-100 text-blue-700',
+    cta: { to: '/dashboard', label: 'Open dashboard' },
   },
   {
-    icon: FileSearch,
-    title: 'Tender and contractor details are hard to access',
-    desc: 'Who won the contract, for how much, and on what terms — this information is scattered and outdated.',
-    color: 'from-amber-500/10 to-yellow-500/10',
-    iconColor: 'text-amber-600 bg-amber-50',
+    icon: Upload,
+    title: 'Ward IT/Admin',
+    desc: 'Publish official project, payment, and proof updates.',
+    color: 'from-emerald-50 to-white border-emerald-100',
+    iconBg: 'bg-emerald-100 text-emerald-700',
+    cta: { to: '/login', label: 'Admin login', state: { from: '/admin', requiresAdmin: true } },
   },
   {
-    icon: CameraOff,
-    title: 'Public work progress is not easily verifiable',
-    desc: 'Citizens cannot confirm if money released matches work done on the ground without visiting offices in person.',
-    color: 'from-slate-500/10 to-slate-400/10',
-    iconColor: 'text-slate-600 bg-slate-100',
+    icon: Landmark,
+    title: 'Municipality',
+    desc: 'Build public trust through transparent reporting.',
+    color: 'from-slate-50 to-white border-slate-200',
+    iconBg: 'bg-brand-100 text-brand-800',
+    cta: { to: '/projects', label: 'Browse projects' },
   },
 ];
 
-const flowSteps = [
-  { icon: Wallet, label: 'Budget Allocation', color: 'bg-brand-600' },
-  { icon: Gavel, label: 'Tender', color: 'bg-brand-700' },
-  { icon: Building2, label: 'Contractor', color: 'bg-emerald-600' },
-  { icon: CreditCard, label: 'Payment', color: 'bg-emerald-700' },
-  { icon: Image, label: 'Proof', color: 'bg-teal-600' },
-  { icon: MessageSquare, label: 'Citizen Feedback', color: 'bg-teal-700' },
+const howItWorks = [
+  {
+    step: '1',
+    icon: Upload,
+    title: 'Ward publishes updates',
+    desc: 'Official budget, tender, payment, and proof records go live.',
+  },
+  {
+    step: '2',
+    icon: Users,
+    title: 'Citizens track progress',
+    desc: 'Dashboard, QR scan, or project pages — no login needed.',
+  },
+  {
+    step: '3',
+    icon: Brain,
+    title: 'AI flags risks',
+    desc: 'Plain-language alerts when something needs a closer look.',
+  },
 ];
 
 const features = [
-  {
-    icon: Wallet,
-    title: 'Budget Transparency',
-    desc: 'See ward-wise allocations and how much has been spent vs. approved budgets.',
-  },
-  {
-    icon: Gavel,
-    title: 'Tender Tracking',
-    desc: 'Follow tender amounts, awarded contractors, and procurement milestones publicly.',
-  },
-  {
-    icon: CreditCard,
-    title: 'Payment Proof',
-    desc: 'Every payment release linked to milestones, dates, and official remarks.',
-  },
-  {
-    icon: Sparkles,
-    title: 'AI Citizen Summary',
-    desc: 'Plain-language summaries so any citizen can understand complex project data instantly.',
-  },
-  {
-    icon: AlertTriangle,
-    title: 'Risk Flag Detection',
-    desc: 'Automated alerts for payment-without-proof, delays, and budget mismatches.',
-  },
-  {
-    icon: MessageSquare,
-    title: 'Citizen Complaint System',
-    desc: 'File and track public complaints tied to specific ward projects.',
-  },
-  {
-    icon: QrCode,
-    title: 'QR Project Access',
-    desc: 'Scan a code at any project site to open live progress on your phone.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Trust Score',
-    desc: 'A 0–100 transparency rating computed from proofs, payments, and citizen feedback.',
-  },
+  { icon: Wallet, title: 'Ward budgets', desc: 'See how much is allocated and spent.' },
+  { icon: Gavel, title: 'Tenders', desc: 'Who won the contract and for how much.' },
+  { icon: CreditCard, title: 'Payments', desc: 'Every release linked to milestones.' },
+  { icon: Image, title: 'Proof photos', desc: 'Before, during, and after work on site.' },
+  { icon: AlertTriangle, title: 'Risk flags', desc: 'Delays and payment-without-proof alerts.' },
+  { icon: Sparkles, title: 'AI summaries', desc: 'Complex data explained simply.' },
 ];
-
-const impactStats = [
-  { icon: Building2, value: '5', label: 'Demo Wards', sub: 'Kathmandu Metropolitan City' },
-  { icon: FolderKanban, value: '10', label: 'Public Projects', sub: 'Roads, health, water & more' },
-  { icon: Banknote, value: 'NPR 12.5 Cr', label: 'Tracked', sub: 'Budget & payments monitored' },
-  { icon: Zap, value: 'Real-time', label: 'Risk Flags', sub: 'Automated trust scoring' },
-];
-
-function FlowArrow() {
-  return (
-    <div className="hidden sm:flex items-center justify-center shrink-0 px-1">
-      <ChevronRight className="h-5 w-5 text-slate-300" />
-    </div>
-  );
-}
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-white">
       <LandingNav />
 
       {/* Hero */}
-      <section className="relative pt-32 pb-20 sm:pt-40 sm:pb-28 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-brand-50 via-white to-emerald-50/40" />
-        <div className="absolute top-20 right-0 w-[500px] h-[500px] bg-brand-400/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-400/10 rounded-full blur-3xl" />
-        <div
-          className="absolute inset-0 opacity-[0.35]"
-          style={{
-            backgroundImage: 'radial-gradient(circle at 1px 1px, rgb(148 163 184 / 0.15) 1px, transparent 0)',
-            backgroundSize: '32px 32px',
-          }}
-        />
+      <section className="relative pt-28 pb-16 sm:pt-32 sm:pb-20 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-brand-50/40 via-white to-white pointer-events-none" />
+        <div className="absolute top-20 right-0 w-96 h-96 bg-blue-100/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-emerald-100/25 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-brand-200/60 text-brand-800 text-sm font-medium mb-8 shadow-sm">
+        <div className="relative page-container">
+          <div className="max-w-3xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-semibold mb-6 card-shadow">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Civic-tech for local government transparency
+              {PRODUCT_NAME} · {MUNICIPALITY_DEMO}
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-slate-900 tracking-tight leading-[1.08]">
-              Track Every Rupee of{' '}
-              <span className="gradient-text">Local Government Spending</span>
+            <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-extrabold text-brand-950 tracking-tight leading-[1.12]">
+              Track Itahari Ward Budget in Public
             </h1>
 
-            <p className="mt-6 text-lg sm:text-xl text-slate-600 leading-relaxed max-w-3xl mx-auto">
-              WardWatch helps citizens see budget allocation, tenders, payments, proof photos, and project progress in one transparent public dashboard.
+            <p className="mt-5 text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
+              See how ward budget is allocated, which contractor got the work, how much payment was released,
+              what proof is uploaded, and what citizens are reporting.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
-              <Link to="/dashboard">
-                <Button variant="primary" size="lg" icon={ArrowRight} iconPosition="right" className="w-full sm:w-auto min-w-[220px] shadow-lg shadow-brand-900/20">
-                  View Public Dashboard
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 mt-8">
+              <Link to="/dashboard" className="sm:flex-1 sm:max-w-[220px]">
+                <Button variant="primary" size="lg" icon={ArrowRight} iconPosition="right" className="w-full">
+                  View Itahari Dashboard
                 </Button>
               </Link>
-              <Link to="/admin">
-                <Button variant="emerald" size="lg" icon={Settings} className="w-full sm:w-auto min-w-[220px] shadow-lg shadow-emerald-900/20">
-                  Open Ward Admin Demo
+              <Link to={`/qr-demo/${DEMO_PROJECT_IDS.qrScan}`} className="sm:flex-1 sm:max-w-[200px]">
+                <Button variant="secondary" size="lg" icon={ScanLine} className="w-full">
+                  Scan QR Demo
+                </Button>
+              </Link>
+              <Link to="/ask" className="sm:flex-1 sm:max-w-[220px]">
+                <Button variant="emerald" size="lg" icon={Bot} className="w-full">
+                  Ask AI About Budget
                 </Button>
               </Link>
             </div>
           </div>
 
-          {/* Hero preview card */}
-          <div className="mt-16 max-w-5xl mx-auto">
-            <div className="rounded-2xl border border-slate-200/80 bg-white/70 backdrop-blur-sm p-2 shadow-2xl shadow-brand-900/10">
-              <div className="rounded-xl bg-gradient-to-br from-brand-900 via-brand-800 to-emerald-900 p-6 sm:p-8 text-white">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {impactStats.map(({ icon: Icon, value, label }) => (
-                    <div key={label} className="text-center sm:text-left">
-                      <Icon className="h-5 w-5 text-emerald-300 mb-2 mx-auto sm:mx-0 opacity-80" />
-                      <p className="text-2xl sm:text-3xl font-bold">{value}</p>
-                      <p className="text-sm text-blue-200/90 mt-0.5">{label}</p>
+          {/* Flow strip */}
+          <div className="mt-12 max-w-4xl mx-auto">
+            <div className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 card-shadow-md">
+              <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-0">
+                {flowStrip.map((step, i) => (
+                  <div key={step.label} className="flex items-center">
+                    <div className="flex items-center gap-2 px-2 sm:px-3 py-2">
+                      <div className="h-9 w-9 rounded-lg bg-brand-800 text-white flex items-center justify-center shrink-0">
+                        <step.icon className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs sm:text-sm font-semibold text-brand-950 whitespace-nowrap">{step.label}</span>
                     </div>
-                  ))}
-                </div>
+                    {i < flowStrip.length - 1 && (
+                      <ChevronRight className="h-4 w-4 text-slate-300 shrink-0 hidden sm:block mx-0.5" />
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Problem */}
-      <section id="problem" className="py-20 sm:py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <p className="text-sm font-semibold text-brand-700 uppercase tracking-wider mb-3">The Problem</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
-              Public money disappears into a black box
-            </h2>
-            <p className="text-slate-500 mt-4 text-lg">
-              Local governance fails when citizens cannot follow the money trail from budget to finished work.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {problems.map(({ icon: Icon, title, desc, color, iconColor }) => (
+          {/* Audience cards */}
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 max-w-5xl mx-auto">
+            {audienceCards.map(({ icon: Icon, title, desc, color, iconBg, cta }) => (
               <div
                 key={title}
-                className={`group relative rounded-2xl border border-slate-200/80 bg-gradient-to-br ${color} p-6 sm:p-8 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 hover:-translate-y-1`}
+                className={`rounded-2xl border bg-gradient-to-br ${color} p-6 card-shadow hover:card-shadow-md transition-shadow`}
               >
-                <div className={`inline-flex p-3 rounded-xl ${iconColor} mb-5`}>
+                <div className={`inline-flex p-3 rounded-xl ${iconBg} mb-4`}>
                   <Icon className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900 leading-snug">{title}</h3>
-                <p className="text-slate-600 mt-3 text-sm leading-relaxed">{desc}</p>
+                <h3 className="text-lg font-bold text-brand-950">{title}</h3>
+                <p className="text-sm text-slate-600 mt-2 leading-relaxed">{desc}</p>
+                <Link
+                  to={cta.to}
+                  state={cta.state}
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 mt-4 hover:text-brand-900"
+                >
+                  {cta.label}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Solution flow */}
-      <section id="solution" className="py-20 sm:py-24 bg-gradient-to-b from-slate-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <p className="text-sm font-semibold text-emerald-700 uppercase tracking-wider mb-3">The Solution</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
-              One transparent chain of accountability
-            </h2>
-            <p className="text-slate-500 mt-4 text-lg">
-              WardWatch connects every step from budget approval to citizen feedback — nothing hidden in between.
-            </p>
+      {/* How it works */}
+      <section id="how-it-works" className="py-16 sm:py-20 bg-slate-50/80 border-y border-slate-100">
+        <div className="page-container">
+          <div className="text-center max-w-xl mx-auto mb-10">
+            <h2 className="text-2xl sm:text-3xl font-bold text-brand-950">How it works</h2>
+            <p className="text-slate-500 mt-2 text-sm sm:text-base">Three steps. No jargon.</p>
           </div>
-
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-10 shadow-sm card-shadow-lg">
-            <div className="flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap items-center justify-center gap-2 sm:gap-0">
-              {flowSteps.map((step, i) => (
-                <div key={step.label} className="flex flex-col sm:flex-row items-center">
-                  <div className="flex flex-col items-center text-center min-w-[100px] sm:min-w-[110px]">
-                    <div className={`h-14 w-14 rounded-2xl ${step.color} text-white flex items-center justify-center shadow-lg mb-3`}>
-                      <step.icon className="h-6 w-6" />
-                    </div>
-                    <p className="text-sm font-semibold text-slate-800 max-w-[120px] leading-tight">{step.label}</p>
-                  </div>
-                  {i < flowSteps.length - 1 && <FlowArrow />}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
+            {howItWorks.map(({ step, icon: Icon, title, desc }) => (
+              <div key={step} className="rounded-2xl border border-slate-200/90 bg-white p-6 card-shadow text-center">
+                <div className="inline-flex h-10 w-10 rounded-full bg-brand-800 text-white text-sm font-bold items-center justify-center mb-4">
+                  {step}
                 </div>
-              ))}
-            </div>
+                <div className="inline-flex p-2 rounded-lg bg-slate-50 text-brand-700 mb-3">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <h3 className="font-bold text-brand-950">{title}</h3>
+                <p className="text-sm text-slate-500 mt-2">{desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Features */}
-      <section id="features" className="py-20 sm:py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <p className="text-sm font-semibold text-brand-700 uppercase tracking-wider mb-3">Key Features</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
-              Everything judges — and citizens — need to see
-            </h2>
-            <p className="text-slate-500 mt-4 text-lg">
-              Built for ward IT teams, auditors, journalists, and everyday residents.
-            </p>
+      <section id="features" className="py-16 sm:py-20 bg-white">
+        <div className="page-container">
+          <div className="text-center max-w-xl mx-auto mb-10">
+            <h2 className="text-2xl sm:text-3xl font-bold text-brand-950">What you can see</h2>
+            <p className="text-slate-500 mt-2 text-sm">Everything in one public dashboard.</p>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
             {features.map(({ icon: Icon, title, desc }) => (
-              <div
-                key={title}
-                className="group rounded-2xl border border-slate-200/80 bg-white p-6 hover:border-brand-200 hover:shadow-xl hover:shadow-brand-900/5 transition-all duration-300 hover:-translate-y-0.5"
-              >
-                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-brand-50 to-emerald-50 text-brand-700 flex items-center justify-center mb-4 group-hover:from-brand-100 group-hover:to-emerald-100 transition-colors">
+              <div key={title} className="flex gap-4 p-5 rounded-2xl border border-slate-200/90 bg-white card-shadow">
+                <div className="h-11 w-11 rounded-xl bg-brand-50 text-brand-800 flex items-center justify-center shrink-0">
                   <Icon className="h-5 w-5" />
                 </div>
-                <h3 className="font-semibold text-slate-900">{title}</h3>
-                <p className="text-sm text-slate-500 mt-2 leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Demo impact */}
-      <section id="impact" className="py-20 sm:py-24 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-900 via-brand-800 to-emerald-900" />
-        <div className="absolute inset-0 opacity-20" style={{
-          backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-          backgroundSize: '40px 40px',
-        }} />
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <p className="text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">Demo Impact</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-              Live data. Real governance scenarios.
-            </h2>
-            <p className="text-blue-200/80 mt-4 text-lg">
-              Pre-loaded with Kathmandu Metropolitan City demo wards, projects, and risk engine output.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {impactStats.map(({ icon: Icon, value, label, sub }) => (
-              <div
-                key={label}
-                className="rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 p-6 sm:p-8 text-center hover:bg-white/15 transition-colors"
-              >
-                <div className="inline-flex p-3 rounded-xl bg-white/10 text-emerald-300 mb-4">
-                  <Icon className="h-6 w-6" />
+                <div>
+                  <h3 className="font-bold text-brand-950">{title}</h3>
+                  <p className="text-sm text-slate-500 mt-1">{desc}</p>
                 </div>
-                <p className="text-3xl sm:text-4xl font-bold text-white">{value}</p>
-                <p className="text-lg font-medium text-emerald-200 mt-1">{label}</p>
-                <p className="text-sm text-blue-200/70 mt-2">{sub}</p>
               </div>
             ))}
-          </div>
-
-          <div className="mt-14 text-center">
-            <Link to="/dashboard">
-              <Button variant="emerald" size="lg" icon={ArrowRight} iconPosition="right" className="shadow-xl shadow-black/20">
-                Explore the Live Demo
-              </Button>
-            </Link>
           </div>
         </div>
       </section>
 
-      {/* Final CTA strip */}
-      <section className="py-16 bg-slate-50 border-t border-slate-200/80">
-        <div className="max-w-3xl mx-auto px-4 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
-            Ready in 10 seconds. Deep enough for auditors.
-          </h2>
-          <p className="text-slate-500 mt-3 text-lg">
-            No login. No setup. Open the dashboard and follow the money.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-3 mt-8">
-            <Link to="/dashboard">
-              <Button variant="primary" size="lg" icon={ArrowRight} iconPosition="right">
-                View Public Dashboard
-              </Button>
-            </Link>
-            <Link to="/projects">
-              <Button variant="secondary" size="lg">
-                Browse 10 Projects
-              </Button>
-            </Link>
+      {/* QR Demo */}
+      <section id="impact" className="py-16 sm:py-20 gradient-hero">
+        <div className="page-container">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-white/10 text-emerald-300 text-[10px] font-bold uppercase tracking-wider mb-4">
+                <QrCode className="h-3.5 w-3.5" />
+                Try it now
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
+                Scan a project QR at the site
+              </h2>
+              <p className="text-slate-300 mt-4 text-sm sm:text-base leading-relaxed max-w-md">
+                Budget, contractor, payments, and proof — on your phone in seconds.
+              </p>
+              <div className="flex flex-wrap gap-3 mt-6">
+                <Link to={`/qr-demo/${DEMO_PROJECT_IDS.qrScan}`}>
+                  <Button variant="secondary" size="md" icon={ScanLine} className="bg-white text-brand-900 border-white">
+                    Scan QR Demo
+                  </Button>
+                </Link>
+                <Link to="/dashboard">
+                  <Button variant="ghost" size="md" className="text-white hover:bg-white/10">
+                    View Dashboard
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            <div className="flex justify-center">
+              <div className="rounded-[2rem] border-4 border-white/20 bg-brand-950 p-4 shadow-2xl w-[260px]">
+                <div className="rounded-xl bg-white/5 p-4 text-center">
+                  <ShieldCheck className="h-5 w-5 text-emerald-400 mx-auto mb-2" />
+                  <p className="text-white text-sm font-bold">Itahari Main Road Repair</p>
+                  <p className="text-brand-300 text-xs mt-1">Ward 1 · 78% complete</p>
+                  <div className="p-3 bg-white rounded-xl mt-4 inline-block">
+                    <QRCodeSVG value={getProjectScanUrl(DEMO_PROJECT_IDS.qrScan)} size={120} level="M" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="py-14 bg-white border-t border-slate-100">
+        <div className="page-container text-center max-w-lg mx-auto">
+          <h2 className="text-xl sm:text-2xl font-bold text-brand-950">Ready to explore?</h2>
+          <p className="text-slate-500 mt-2 text-sm">No login needed for the public dashboard.</p>
+          <Link to="/dashboard" className="inline-block mt-6">
+            <Button variant="primary" size="lg" icon={ArrowRight} iconPosition="right">
+              View Itahari Dashboard
+            </Button>
+          </Link>
         </div>
       </section>
 

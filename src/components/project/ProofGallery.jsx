@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { resolveFileUrl } from '../../services/uploadService';
 import { Camera, FileText, ImageIcon } from 'lucide-react';
 import Badge from '../ui/Badge';
 import { formatDate } from '../../utils/formatters';
@@ -19,6 +20,7 @@ const TYPE_COLORS = {
 
 function ProofCard({ proof, section }) {
   const [imgFailed, setImgFailed] = useState(false);
+  const src = resolveFileUrl(proof);
 
   return (
     <div className="rounded-xl overflow-hidden border border-slate-200 bg-white group hover:shadow-md transition-shadow">
@@ -27,9 +29,9 @@ function ProofCard({ proof, section }) {
           <section.icon className="h-8 w-8 text-white/80 mb-2" />
           <span className="text-xs font-medium text-white/90 px-3 text-center line-clamp-2">{proof.title}</span>
         </div>
-        {proof.url && !imgFailed && (
+        {src && !imgFailed && (
           <img
-            src={proof.url}
+            src={src}
             alt={proof.title}
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"

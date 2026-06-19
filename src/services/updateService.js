@@ -27,7 +27,7 @@ export const EMPTY_UPDATE_FORM = {
   paymentDate: new Date().toISOString().split('T')[0],
   milestone: '',
   paymentRemarks: '',
-  paymentProofUrl: '',
+  paymentProofFile: null,
   // Progress Update
   progressAfter: '',
   progressStatus: 'Ongoing',
@@ -35,15 +35,25 @@ export const EMPTY_UPDATE_FORM = {
   // Proof Upload
   proofType: 'during',
   proofTitle: '',
-  proofUrl: '',
+  proofFile: null,
   proofRemarks: '',
   proofDate: new Date().toISOString().split('T')[0],
   // Completion Update
   finalStatus: 'Completed',
   completionRemarks: '',
-  completionProofUrl: '',
+  completionProofFile: null,
   completionDate: new Date().toISOString().split('T')[0],
 };
+
+function filePayload(file) {
+  if (!file?.fileUrl) return {};
+  return {
+    fileUrl: file.fileUrl,
+    fileName: file.fileName,
+    fileType: file.fileType,
+    fileSize: file.fileSize,
+  };
+}
 
 export function validateUpdateForm(form) {
   const errors = {};
@@ -70,6 +80,7 @@ export function validateUpdateForm(form) {
     case 'proof':
       if (!form.proofTitle?.trim()) errors.proofTitle = 'Title is required';
       if (!form.proofDate) errors.proofDate = 'Upload date is required';
+      if (!form.proofFile?.fileUrl) errors.proofFile = 'Please upload a proof image or document';
       break;
 
     case 'completion':
@@ -99,56 +110,65 @@ export async function applyProjectUpdate(form, handlers) {
   }
 
   const { projectId } = form;
-  let summary = {};
 
   switch (form.updateType) {
     case 'payment':
-      summary = await handlers.addPayment({
+      return {
         projectId,
-        amount: form.amount,
-        date: form.paymentDate,
-        milestone: form.milestone.trim(),
-        remarks: form.paymentRemarks.trim(),
-        proofUrl: form.paymentProofUrl.trim(),
-      });
-      break;
+        updateType: form.updateType,
+        ...(await handlers.addPayment({
+          projectId,
+          amount: form.amount,
+          date: form.paymentDate,
+          milestone: form.milestone.trim(),
+          remarks: form.paymentRemarks.trim(),
+          proofFile: form.paymentProofFile,
+        })),
+      };
 
     case 'progress':
-      summary = await handlers.addUpdate({
+      return {
         projectId,
-        progressAfter: form.progressAfter,
-        status: form.progressStatus,
-        remarks: form.progressRemarks.trim(),
-        date: new Date().toISOString().split('T')[0],
-      });
-      break;
+        updateType: form.updateType,
+        ...(await handlers.addUpdate({
+          projectId,
+          progressAfter: form.progressAfter,
+          status: form.progressStatus,
+          remarks: form.progressRemarks.trim(),
+          date: new Date().toISOString().split('T')[0],
+        })),
+      };
 
     case 'proof':
-      summary = await handlers.addProof({
+      return {
         projectId,
-        title: form.proofTitle.trim(),
-        type: form.proofType,
-        url: form.proofUrl.trim(),
-        uploadedAt: form.proofDate,
-        remarks: form.proofRemarks.trim(),
-      });
-      break;
+        updateType: form.updateType,
+        ...(await handlers.addProof({
+          projectId,
+          title: form.proofTitle.trim(),
+          type: form.proofType,
+          uploadedAt: form.proofDate,
+          remarks: form.proofRemarks.trim(),
+          ...filePayload(form.proofFile),
+        })),
+      };
 
     case 'completion':
-      summary = await handlers.completeProject({
+      return {
         projectId,
-        finalStatus: form.finalStatus,
-        remarks: form.completionRemarks.trim(),
-        proofUrl: form.completionProofUrl.trim(),
-        date: form.completionDate,
-      });
-      break;
+        updateType: form.updateType,
+        ...(await handlers.completeProject({
+          projectId,
+          finalStatus: form.finalStatus,
+          remarks: form.completionRemarks.trim(),
+          proofFile: form.completionProofFile,
+          date: form.completionDate,
+        })),
+      };
 
     default:
       throw new Error('Unknown update type');
   }
-
-  return { projectId, updateType: form.updateType, ...summary };
 }
 
 export { PROJECT_STATUSES };

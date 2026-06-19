@@ -1,24 +1,21 @@
-import { getTrustLabel } from '../../utils/riskEngine';
+function scoreToColor(score) {
+  if (score >= 80) return { ring: 'text-emerald-600', label: 'Low Risk', text: 'text-emerald-700' };
+  if (score >= 50) return { ring: 'text-amber-500', label: 'Medium Risk', text: 'text-amber-700' };
+  return { ring: 'text-red-500', label: 'High Risk', text: 'text-red-600' };
+}
 
-const ringColors = {
-  emerald: 'text-emerald-500',
-  blue: 'text-blue-500',
-  amber: 'text-amber-500',
-  red: 'text-red-500',
-};
-
-export default function TrustScoreRing({ score, size = 'md' }) {
-  const { label, color } = getTrustLabel(score);
-  const dimensions = size === 'lg' ? 120 : size === 'sm' ? 64 : 88;
-  const stroke = size === 'lg' ? 8 : size === 'sm' ? 5 : 6;
+export default function TrustScoreRing({ score, size = 'md', showLabel = true }) {
+  const { ring, label, text } = scoreToColor(score);
+  const dimensions = size === 'lg' ? 112 : size === 'sm' ? 56 : 80;
+  const stroke = size === 'lg' ? 7 : size === 'sm' ? 4 : 5;
   const radius = (dimensions - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1.5">
       <div className="relative" style={{ width: dimensions, height: dimensions }}>
-        <svg width={dimensions} height={dimensions} className="-rotate-90">
+        <svg width={dimensions} height={dimensions} className="-rotate-90" aria-hidden>
           <circle
             cx={dimensions / 2}
             cy={dimensions / 2}
@@ -38,19 +35,25 @@ export default function TrustScoreRing({ score, size = 'md' }) {
             strokeDasharray={circumference}
             strokeDashoffset={offset}
             strokeLinecap="round"
-            className={`${ringColors[color]} transition-all duration-700`}
+            className={`${ring} transition-all duration-700 ease-out`}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`font-bold text-slate-900 ${size === 'lg' ? 'text-3xl' : size === 'sm' ? 'text-lg' : 'text-2xl'}`}>
+          <span className={`font-bold tabular-nums text-slate-900 ${
+            size === 'lg' ? 'text-2xl' : size === 'sm' ? 'text-base' : 'text-xl'
+          }`}>
             {score}
           </span>
-          {size !== 'sm' && <span className="text-[10px] text-slate-400 uppercase tracking-wide">Trust</span>}
+          {size !== 'sm' && (
+            <span className="text-[9px] text-slate-400 uppercase tracking-wider font-medium">Trust</span>
+          )}
         </div>
       </div>
-      {size !== 'sm' && (
-        <span className={`text-xs font-semibold ${ringColors[color]}`}>{label}</span>
+      {showLabel && size !== 'sm' && (
+        <span className={`text-[11px] font-semibold ${text}`}>{label}</span>
       )}
     </div>
   );
 }
+
+export { scoreToColor };

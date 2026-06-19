@@ -1,71 +1,98 @@
 import {
-  Wallet, TrendingDown, PiggyBank, FolderKanban, Clock, AlertTriangle,
+  Wallet, TrendingDown, FolderKanban, AlertTriangle,
 } from 'lucide-react';
 import { formatCompactCurrency, formatPercent } from '../../utils/formatters';
-import { getTotalPaid, calculateTrustScore } from '../../utils/riskEngine';
+import { getTotalPaid, getRiskLevel } from '../../utils/riskEngine';
 
-const kpiConfig = [
-  { key: 'total', label: 'Total Budget', icon: Wallet, color: 'brand', accent: 'from-brand-500/10 to-brand-600/5' },
-  { key: 'used', label: 'Budget Used', icon: TrendingDown, color: 'emerald', accent: 'from-emerald-500/10 to-emerald-600/5' },
-  { key: 'remaining', label: 'Remaining Budget', icon: PiggyBank, color: 'brand', accent: 'from-teal-500/10 to-teal-600/5' },
-  { key: 'active', label: 'Active Projects', icon: FolderKanban, color: 'emerald', accent: 'from-blue-500/10 to-blue-600/5' },
-  { key: 'delayed', label: 'Delayed Projects', icon: Clock, color: 'amber', accent: 'from-amber-500/10 to-amber-600/5' },
-  { key: 'highRisk', label: 'High Risk Projects', icon: AlertTriangle, color: 'red', accent: 'from-red-500/10 to-red-600/5' },
+const cards = [
+  {
+    key: 'total',
+    label: 'Total Budget',
+    helper: 'Approved for tracked projects',
+    icon: Wallet,
+    accent: 'border-l-brand-700',
+    iconBg: 'bg-brand-50 text-brand-800',
+  },
+  {
+    key: 'used',
+    label: 'Budget Used',
+    helper: 'Payments released so far',
+    icon: TrendingDown,
+    accent: 'border-l-blue-600',
+    iconBg: 'bg-blue-50 text-blue-700',
+  },
+  {
+    key: 'active',
+    label: 'Active Projects',
+    helper: 'Currently in progress',
+    icon: FolderKanban,
+    accent: 'border-l-emerald-600',
+    iconBg: 'bg-emerald-50 text-emerald-700',
+  },
+  {
+    key: 'highRisk',
+    label: 'High Risk Projects',
+    helper: 'Need closer review',
+    icon: AlertTriangle,
+    accent: 'border-l-red-500',
+    iconBg: 'bg-red-50 text-red-600',
+    warn: true,
+  },
 ];
-
-const iconStyles = {
-  brand: 'bg-brand-100 text-brand-700',
-  emerald: 'bg-emerald-100 text-emerald-700',
-  amber: 'bg-amber-100 text-amber-700',
-  red: 'bg-red-100 text-red-700',
-};
 
 export default function DashboardKPIs({ projects }) {
   const totalBudget = projects.reduce((s, p) => s + (p.allocatedBudget ?? 0), 0);
   const budgetUsed = projects.reduce((s, p) => s + getTotalPaid(p), 0);
-  const remaining = Math.max(0, totalBudget - budgetUsed);
   const activeCount = projects.filter((p) => p.status === 'Ongoing').length;
-  const delayedCount = projects.filter((p) => p.status === 'Delayed').length;
-  const highRiskCount = projects.filter((p) => calculateTrustScore(p) < 50).length;
+  const highRiskCount = projects.filter((p) => getRiskLevel(p, projects).label === 'High Risk').length;
   const usedPct = totalBudget > 0 ? (budgetUsed / totalBudget) * 100 : 0;
 
   const values = {
     total: formatCompactCurrency(totalBudget),
     used: formatCompactCurrency(budgetUsed),
-    remaining: formatCompactCurrency(remaining),
     active: activeCount,
-    delayed: delayedCount,
     highRisk: highRiskCount,
   };
 
-  const subtexts = {
-    total: `Across ${projects.length} projects`,
-    used: `${formatPercent(usedPct, 1)} of total budget`,
-    remaining: `${formatPercent(100 - usedPct, 1)} unspent`,
-    active: 'Currently in progress',
-    delayed: 'Past deadline or flagged',
-    highRisk: 'Trust score below 50',
+  const helpers = {
+    total: `${projects.length} projects`,
+    used: `${formatPercent(usedPct, 0)} of budget`,
+    active: 'Ongoing ward work',
+    highRisk: highRiskCount > 0 ? 'See list below' : 'All clear',
   };
 
+  if (projects.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
+        No projects for this ward filter.
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4">
-      {kpiConfig.map(({ key, label, icon: Icon, color, accent }) => (
-        <div
-          key={key}
-          className={`relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br ${accent} to-white p-5 card-shadow hover:shadow-md transition-shadow`}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1.5 tracking-tight">{values[key]}</p>
-              <p className="text-xs text-slate-400 mt-1">{subtexts[key]}</p>
-            </div>
-            <div className={`p-2.5 rounded-xl shrink-0 ${iconStyles[color]}`}>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {cards.map(({ key, label, helper, icon: Icon, accent, iconBg, warn }) => {
+        const isAlert = warn && values[key] > 0;
+        return (
+          <div
+            key={key}
+            className={`rounded-2xl border border-slate-200/90 border-l-4 ${accent} bg-white p-5 sm:p-6 card-shadow min-h-[140px] flex flex-col ${
+              isAlert ? 'ring-1 ring-red-100' : ''
+            }`}
+          >
+            <div className={`inline-flex p-2 rounded-lg ${iconBg} mb-3 w-fit`}>
               <Icon className="h-5 w-5" />
             </div>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{label}</p>
+            <p className={`text-2xl sm:text-3xl font-extrabold mt-1 tabular-nums ${
+              isAlert ? 'text-red-700' : 'text-brand-950'
+            }`}>
+              {values[key]}
+            </p>
+            <p className="text-xs text-slate-500 mt-auto pt-2">{helpers[key] || helper}</p>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

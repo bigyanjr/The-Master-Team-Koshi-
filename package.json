@@ -4,12 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
+    "dev:mobile": "vite --host --port 5174",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "firebase": "^12.15.0",
     "lucide-react": "^1.21.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.6",

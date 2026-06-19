@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import Card, { CardHeader } from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import FileUpload from '../components/ui/FileUpload';
 import { DataResponsibilityNotice } from '../components/admin/AdminActivityFeed';
 
 const PROOF_TYPES = [
@@ -15,19 +17,31 @@ const PROOF_TYPES = [
 
 export default function UploadProof() {
   const { projects, addProof } = useData();
+  const { profile } = useAuth();
   const navigate = useNavigate();
   const [success, setSuccess] = useState(false);
+  const [proofFile, setProofFile] = useState(null);
+  const [fileError, setFileError] = useState('');
   const [form, setForm] = useState({
     projectId: '',
     title: '',
     type: 'during',
-    url: '',
     uploadedAt: new Date().toISOString().split('T')[0],
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    addProof(form);
+    if (!proofFile?.fileUrl) {
+      setFileError('Please upload a proof image or document');
+      return;
+    }
+
+    setFileError('');
+    await addProof({
+      ...form,
+      ...proofFile,
+      uploadedBy: profile?.uid || null,
+    });
     setSuccess(true);
     setTimeout(() => navigate('/admin'), 1500);
   };
@@ -80,12 +94,18 @@ export default function UploadProof() {
               placeholder="e.g. Road resurfacing — Sector A complete"
               className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Image URL (optional)</label>
-            <input value={form.url} onChange={(e) => update('url', e.target.value)}
-              placeholder="Leave blank for demo placeholder image"
-              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30" />
-          </div>
+          <FileUpload
+            id="standaloneProofFile"
+            label="Proof file"
+            hint="Drop image or PDF here"
+            value={proofFile}
+            onChange={(file) => {
+              setProofFile(file);
+              setFileError('');
+            }}
+            error={fileError}
+            storageFolder="proofs"
+          />
           <div className="flex gap-3 pt-2">
             <Button type="submit">Publish Proof</Button>
             <Button type="button" variant="secondary" onClick={() => navigate('/admin')}>Cancel</Button>
