@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { seedData as initialData } from '../data/seedData';
+import { getAllComplaints, getAllPayments } from '../utils/riskEngine';
 
 const DataContext = createContext(null);
 
@@ -12,45 +13,94 @@ function nextId(prefix) {
 export function DataProvider({ children }) {
   const [data, setData] = useState(initialData);
 
-  const addProject = useCallback((project) => {
+  const addProject = useCallback((form) => {
     const id = nextId('proj');
-    setData((prev) => ({
-      ...prev,
-      projects: [{ ...project, id, status: project.status || 'pending', progress: project.progress ?? 0 }, ...prev.projects],
-    }));
+    const project = {
+      id,
+      wardNo: Number(form.wardNo),
+      title: form.title,
+      category: form.category,
+      allocatedBudget: Number(form.allocatedBudget),
+      tenderAmount: Number(form.tenderAmount || form.allocatedBudget),
+      contractorName: form.contractorName || null,
+      startDate: form.startDate,
+      deadline: form.deadline,
+      status: form.status || 'Planned',
+      progressPercent: 0,
+      description: form.description,
+      location: form.location,
+      coordinates: null,
+      payments: [],
+      proofs: [],
+      complaints: [],
+    };
+    setData((prev) => ({ ...prev, projects: [project, ...prev.projects] }));
     return id;
   }, []);
 
-  const addUpdate = useCallback((update) => {
-    const id = nextId('upd');
+  const addUpdate = useCallback(({ projectId, title, description, progressAfter, postedBy, date }) => {
+    setData((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => {
+        if (p.id !== projectId) return p;
+        const progressPercent = Number(progressAfter);
+        return {
+          ...p,
+          progressPercent,
+          status: progressPercent >= 100 ? 'Completed' : p.status === 'Planned' ? 'Ongoing' : p.status,
+          proofs: [
+            ...(p.proofs ?? []),
+            {
+              type: 'during',
+              title,
+              url: `https://placehold.co/800x450/2563eb/white?text=${encodeURIComponent(title.slice(0, 20))}`,
+              uploadedAt: date || new Date().toISOString().split('T')[0],
+            },
+          ],
+        };
+      }),
+    }));
+    return projectId;
+  }, []);
+
+  const addComplaint = useCallback((form) => {
+    const complaint = {
+      citizenName: form.citizenName,
+      message: form.message,
+      status: 'Pending',
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+
     setData((prev) => {
-      const projects = prev.projects.map((p) =>
-        p.id === update.projectId
-          ? { ...p, progress: update.progressAfter ?? p.progress, status: update.progressAfter >= 100 ? 'completed' : p.status === 'pending' ? 'in-progress' : p.status }
-          : p
-      );
-      return {
-        ...prev,
-        projects,
-        updates: [{ ...update, id, date: update.date || new Date().toISOString().split('T')[0] }, ...prev.updates],
-      };
+      if (form.projectId) {
+        return {
+          ...prev,
+          projects: prev.projects.map((p) =>
+            p.id === form.projectId
+              ? { ...p, complaints: [complaint, ...(p.complaints ?? [])] }
+              : p
+          ),
+        };
+      }
+      return prev;
     });
-    return id;
+
+    return nextId('comp');
   }, []);
 
-  const addComplaint = useCallback((complaint) => {
-    const id = nextId('comp');
-    setData((prev) => ({
-      ...prev,
-      complaints: [{ ...complaint, id, date: complaint.date || new Date().toISOString().split('T')[0], status: 'open' }, ...prev.complaints],
-    }));
-    return id;
-  }, []);
-
-  const value = useMemo(
-    () => ({ ...data, addProject, addUpdate, addComplaint }),
-    [data, addProject, addUpdate, addComplaint]
-  );
+  const value = useMemo(() => {
+    const { municipality, wards, projects } = data;
+    return {
+      municipality,
+      wards,
+      projects,
+      payments: getAllPayments(projects),
+      complaints: getAllComplaints(projects),
+      addProject,
+      addUpdate,
+      addComplaint,
+    };
+  }, [data, addProject, addUpdate, addComplaint]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
@@ -61,7 +111,6 @@ export function useData() {
   return ctx;
 }
 
-// Firebase-ready hook point — swap implementation when backend is connected
 export function useDataStore() {
   return useData();
 }

@@ -6,6 +6,7 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { useData } from '../context/DataContext';
 import { formatCompactCurrency } from '../utils/formatters';
+import { getTotalPaid } from '../utils/riskEngine';
 
 const features = [
   { icon: Eye, title: 'Public Visibility', desc: 'Every ward project, tender, and payment is open for citizen scrutiny.' },
@@ -17,8 +18,8 @@ const features = [
 ];
 
 export default function Landing() {
-  const { municipality, projects, payments } = useData();
-  const totalSpent = payments.reduce((s, p) => s + p.amount, 0);
+  const { municipality, projects } = useData();
+  const totalSpent = projects.reduce((s, p) => s + getTotalPaid(p), 0);
 
   return (
     <div>

@@ -4,27 +4,29 @@ import { useData } from '../context/DataContext';
 import ProjectCard from '../components/project/ProjectCard';
 import EmptyState from '../components/ui/EmptyState';
 import { FolderKanban } from 'lucide-react';
+import { getRiskLevel } from '../utils/riskEngine';
 
 export default function Projects() {
-  const { projects, wards, payments, proofs, updates, complaints, contractors } = useData();
-  const context = { payments, proofs, updates, complaints, contractors };
+  const { projects, wards } = useData();
 
   const [search, setSearch] = useState('');
   const [wardFilter, setWardFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [riskFilter, setRiskFilter] = useState('all');
 
   const categories = useMemo(() => [...new Set(projects.map((p) => p.category))], [projects]);
 
   const filtered = useMemo(() => {
     return projects.filter((p) => {
-      if (wardFilter !== 'all' && p.wardId !== wardFilter) return false;
+      if (wardFilter !== 'all' && p.wardNo !== Number(wardFilter)) return false;
       if (statusFilter !== 'all' && p.status !== statusFilter) return false;
       if (categoryFilter !== 'all' && p.category !== categoryFilter) return false;
+      if (riskFilter !== 'all' && getRiskLevel(p).label !== riskFilter) return false;
       if (search && !p.title.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [projects, wardFilter, statusFilter, categoryFilter, search]);
+  }, [projects, wardFilter, statusFilter, categoryFilter, riskFilter, search]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -53,7 +55,7 @@ export default function Projects() {
             >
               <option value="all">All Wards</option>
               {wards.map((w) => (
-                <option key={w.id} value={w.id}>Ward {w.number} — {w.name}</option>
+                <option key={w.id} value={w.number}>Ward {w.number} — {w.name}</option>
               ))}
             </select>
             <select
@@ -62,10 +64,21 @@ export default function Projects() {
               className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             >
               <option value="all">All Status</option>
-              <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="pending">Pending</option>
-              <option value="delayed">Delayed</option>
+              <option value="Planned">Planned</option>
+              <option value="Tender Open">Tender Open</option>
+              <option value="Ongoing">Ongoing</option>
+              <option value="Completed">Completed</option>
+              <option value="Delayed">Delayed</option>
+            </select>
+            <select
+              value={riskFilter}
+              onChange={(e) => setRiskFilter(e.target.value)}
+              className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            >
+              <option value="all">All Risk Levels</option>
+              <option value="Low Risk">Low Risk</option>
+              <option value="Medium Risk">Medium Risk</option>
+              <option value="High Risk">High Risk</option>
             </select>
             <select
               value={categoryFilter}
@@ -86,19 +99,12 @@ export default function Projects() {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState
-          icon={FolderKanban}
-          title="No projects found"
-          description="Try adjusting your filters or search query."
-        />
+        <EmptyState icon={FolderKanban} title="No projects found" description="Try adjusting your filters or search query." />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {filtered.map((project) => {
-            const ward = wards.find((w) => w.id === project.wardId);
-            return (
-              <ProjectCard key={project.id} project={project} ward={ward} context={context} />
-            );
-          })}
+          {filtered.map((project) => (
+            <ProjectCard key={project.id} project={project} wards={wards} />
+          ))}
         </div>
       )}
     </div>

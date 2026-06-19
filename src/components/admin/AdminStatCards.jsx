@@ -3,18 +3,24 @@ import { PlusCircle, FileText, FolderKanban, AlertCircle } from 'lucide-react';
 import Card, { CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
 import StatCard from '../ui/StatCard';
+import { RiskLevelBadge } from '../ui/Badge';
+import { calculateTrustScore, getRiskLevel, getAllComplaints } from '../../utils/riskEngine';
 
-export default function AdminStatCards({ projects, updates, complaints }) {
-  const inProgress = projects.filter((p) => p.status === 'in-progress').length;
-  const pending = projects.filter((p) => p.status === 'pending').length;
-  const openComplaints = complaints.filter((c) => c.status === 'open' || c.status === 'investigating').length;
+export default function AdminStatCards({ projects }) {
+  const inProgress = projects.filter((p) => p.status === 'Ongoing').length;
+  const pending = projects.filter((p) => p.status === 'Planned' || p.status === 'Tender Open').length;
+  const complaints = getAllComplaints(projects);
+  const openComplaints = complaints.filter(
+    (c) => c.status === 'Pending' || c.status === 'Under Review' || c.status === 'Verified'
+  ).length;
+  const highRisk = projects.filter((p) => getRiskLevel(p).label === 'High Risk').length;
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total Projects" value={projects.length} icon={FolderKanban} color="brand" />
-        <StatCard label="In Progress" value={inProgress} icon={PlusCircle} color="emerald" />
-        <StatCard label="Pending Start" value={pending} subtext="Awaiting contractor" color="amber" />
+        <StatCard label="Ongoing" value={inProgress} icon={PlusCircle} color="emerald" />
+        <StatCard label="Planned / Tender" value={pending} subtext="Not yet started" color="amber" />
         <StatCard label="Open Complaints" value={openComplaints} icon={AlertCircle} color={openComplaints ? 'red' : 'emerald'} />
       </div>
 
@@ -31,14 +37,20 @@ export default function AdminStatCards({ projects, updates, complaints }) {
           </div>
         </Card>
         <Card>
-          <CardHeader title="Recent Updates" subtitle={`${updates.length} total posted`} />
-          <div className="space-y-2">
-            {updates.slice(0, 4).map((u) => (
-              <div key={u.id} className="text-sm p-2 rounded-lg bg-slate-50">
-                <span className="font-medium text-slate-800">{u.title}</span>
-                <span className="text-slate-400 ml-2 text-xs">{u.date}</span>
-              </div>
-            ))}
+          <CardHeader title="Risk Overview" subtitle={`${highRisk} high-risk projects`} />
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {projects.map((p) => {
+              const risk = getRiskLevel(p);
+              return (
+                <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 text-sm">
+                  <span className="truncate flex-1 mr-2 text-slate-700">{p.title}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-bold text-slate-500">{calculateTrustScore(p)}</span>
+                    <RiskLevelBadge level={risk.label} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       </div>

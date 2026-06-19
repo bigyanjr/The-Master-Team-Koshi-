@@ -1,29 +1,29 @@
-const currencyFormatter = new Intl.NumberFormat('en-IN', {
+const currencyFormatter = new Intl.NumberFormat('en-NP', {
   style: 'currency',
-  currency: 'INR',
+  currency: 'NPR',
   maximumFractionDigits: 0,
 });
 
-const compactCurrencyFormatter = new Intl.NumberFormat('en-IN', {
+const compactCurrencyFormatter = new Intl.NumberFormat('en-NP', {
   style: 'currency',
-  currency: 'INR',
+  currency: 'NPR',
   notation: 'compact',
   maximumFractionDigits: 1,
 });
 
 export function formatCurrency(amount) {
-  if (amount == null || Number.isNaN(Number(amount))) return '₹0';
+  if (amount == null || Number.isNaN(Number(amount))) return 'Rs. 0';
   return currencyFormatter.format(Number(amount));
 }
 
 export function formatCompactCurrency(amount) {
-  if (amount == null || Number.isNaN(Number(amount))) return '₹0';
+  if (amount == null || Number.isNaN(Number(amount))) return 'Rs. 0';
   return compactCurrencyFormatter.format(Number(amount));
 }
 
 export function formatDate(dateStr) {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-IN', {
+  return new Date(dateStr).toLocaleDateString('en-NP', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -32,7 +32,7 @@ export function formatDate(dateStr) {
 
 export function formatDateTime(dateStr) {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleString('en-IN', {
+  return new Date(dateStr).toLocaleString('en-NP', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -59,17 +59,20 @@ export function formatRelativeTime(dateStr) {
 
 export function getStatusColor(status) {
   const map = {
+    planned: 'slate',
+    'tender open': 'amber',
+    ongoing: 'blue',
     completed: 'emerald',
-    'in-progress': 'blue',
-    pending: 'amber',
     delayed: 'red',
-    cancelled: 'slate',
-    open: 'amber',
-    resolved: 'emerald',
-    investigating: 'blue',
-    rejected: 'red',
+    pending: 'amber',
+    'under review': 'blue',
     verified: 'emerald',
-    unverified: 'amber',
+    resolved: 'emerald',
+    rejected: 'red',
   };
   return map[status?.toLowerCase()] || 'slate';
+}
+
+export function getWardByNo(wards, wardNo) {
+  return wards.find((w) => w.number === wardNo);
 }

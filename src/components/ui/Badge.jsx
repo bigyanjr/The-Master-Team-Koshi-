@@ -16,19 +16,26 @@ export default function Badge({ children, color = 'slate', size = 'sm', classNam
   );
 }
 
+const STATUS_MAP = {
+  planned: { label: 'Planned', color: 'slate' },
+  'tender open': { label: 'Tender Open', color: 'amber' },
+  ongoing: { label: 'Ongoing', color: 'blue' },
+  completed: { label: 'Completed', color: 'emerald' },
+  delayed: { label: 'Delayed', color: 'red' },
+  pending: { label: 'Pending', color: 'amber' },
+  'under review': { label: 'Under Review', color: 'blue' },
+  verified: { label: 'Verified', color: 'emerald' },
+  resolved: { label: 'Resolved', color: 'emerald' },
+  rejected: { label: 'Rejected', color: 'red' },
+  released: { label: 'Released', color: 'emerald' },
+};
+
 export function StatusBadge({ status }) {
-  const labels = {
-    completed: { label: 'Completed', color: 'emerald' },
-    'in-progress': { label: 'In Progress', color: 'blue' },
-    pending: { label: 'Pending', color: 'amber' },
-    delayed: { label: 'Delayed', color: 'red' },
-    cancelled: { label: 'Cancelled', color: 'slate' },
-    open: { label: 'Open', color: 'amber' },
-    resolved: { label: 'Resolved', color: 'emerald' },
-    investigating: { label: 'Investigating', color: 'blue' },
-    awarded: { label: 'Awarded', color: 'emerald' },
-    released: { label: 'Released', color: 'emerald' },
-  };
-  const config = labels[status?.toLowerCase()] || { label: status, color: 'slate' };
+  const config = STATUS_MAP[status?.toLowerCase()] || { label: status, color: 'slate' };
   return <Badge color={config.color}>{config.label}</Badge>;
+}
+
+export function RiskLevelBadge({ level }) {
+  const colors = { 'Low Risk': 'emerald', 'Medium Risk': 'amber', 'High Risk': 'red' };
+  return <Badge color={colors[level] || 'slate'} size="lg">{level}</Badge>;
 }

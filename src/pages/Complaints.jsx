@@ -5,37 +5,29 @@ import Card, { CardHeader } from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
-import { formatDate } from '../utils/formatters';
+import { formatDate, getWardByNo } from '../utils/formatters';
+import { getAllComplaints } from '../utils/riskEngine';
 
 export default function Complaints() {
-  const { complaints, wards, projects, addComplaint } = useData();
+  const { projects, wards, addComplaint } = useData();
+  const complaints = getAllComplaints(projects);
+
   const [showForm, setShowForm] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
     citizenName: '',
-    wardId: '',
     projectId: '',
-    subject: '',
-    description: '',
-    category: 'Transparency',
+    message: '',
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    addComplaint({
-      ...form,
-      projectId: form.projectId || null,
-      wardId: form.wardId,
-    });
+    addComplaint(form);
     setSubmitted(true);
     setShowForm(false);
-    setForm({ citizenName: '', wardId: '', projectId: '', subject: '', description: '', category: 'Transparency' });
+    setForm({ citizenName: '', projectId: '', message: '' });
     setTimeout(() => setSubmitted(false), 4000);
   };
-
-  const wardProjects = form.wardId
-    ? projects.filter((p) => p.wardId === form.wardId)
-    : projects;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -51,7 +43,7 @@ export default function Complaints() {
 
       {submitted && (
         <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium">
-          Your complaint has been submitted and is now publicly visible.
+          Your complaint has been submitted and is now publicly visible on the linked project.
         </div>
       )}
 
@@ -71,64 +63,29 @@ export default function Complaints() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Ward</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Related Project</label>
                 <select
                   required
-                  value={form.wardId}
-                  onChange={(e) => setForm({ ...form, wardId: e.target.value, projectId: '' })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-                >
-                  <option value="">Select ward</option>
-                  {wards.map((w) => (
-                    <option key={w.id} value={w.id}>Ward {w.number} — {w.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Related Project (optional)</label>
-                <select
                   value={form.projectId}
                   onChange={(e) => setForm({ ...form, projectId: e.target.value })}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                 >
-                  <option value="">General ward concern</option>
-                  {wardProjects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.title}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-                <select
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-                >
-                  {['Transparency', 'Financial', 'Delay', 'Quality', 'Infrastructure', 'Water Supply'].map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                  <option value="">Select project</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>Ward {p.wardNo} — {p.title}</option>
                   ))}
                 </select>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Subject</label>
-              <input
-                required
-                value={form.subject}
-                onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-                placeholder="Brief summary of your concern"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Message</label>
               <textarea
                 required
                 rows={4}
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                value={form.message}
+                onChange={(e) => setForm({ ...form, message: e.target.value })}
                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 resize-none"
-                placeholder="Describe the issue in detail..."
+                placeholder="Describe your concern in detail..."
               />
             </div>
             <Button type="submit" icon={Send}>Submit Complaint</Button>
@@ -146,30 +103,21 @@ export default function Complaints() {
         />
       ) : (
         <div className="space-y-4">
-          {complaints.map((complaint) => {
-            const ward = wards.find((w) => w.id === complaint.wardId);
+          {complaints.map((complaint, i) => {
             const project = projects.find((p) => p.id === complaint.projectId);
+            const ward = project ? getWardByNo(wards, project.wardNo) : null;
             return (
-              <Card key={complaint.id}>
+              <Card key={`${complaint.projectId}-${complaint.createdAt}-${i}`}>
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge status={complaint.status} />
-                    <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{complaint.category}</span>
-                  </div>
-                  <span className="text-xs text-slate-400">{formatDate(complaint.date)}</span>
+                  <StatusBadge status={complaint.status} />
+                  <span className="text-xs text-slate-400">{formatDate(complaint.createdAt)}</span>
                 </div>
-                <h3 className="font-semibold text-slate-900">{complaint.subject}</h3>
-                <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">{complaint.description}</p>
+                <p className="text-sm text-slate-700 leading-relaxed">{complaint.message}</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-slate-500">
                   <span>By: {complaint.citizenName}</span>
                   {ward && <span>Ward {ward.number} — {ward.name}</span>}
                   {project && <span>Project: {project.title}</span>}
                 </div>
-                {complaint.resolution && (
-                  <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm text-emerald-800">
-                    <span className="font-medium">Resolution: </span>{complaint.resolution}
-                  </div>
-                )}
               </Card>
             );
           })}
