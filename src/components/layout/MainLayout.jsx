@@ -1,15 +1,15 @@
 import { Outlet } from 'react-router-dom';
-import Header from './Header';
-import Footer from './Footer';
+import LandingNav from '../landing/LandingNav';
+import LandingFooter from '../landing/LandingFooter';
 
 export default function MainLayout() {
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-1">
+      <LandingNav />
+      <main className="flex-1 pt-28 sm:pt-32">
         <Outlet />
       </main>
-      <Footer />
+      <LandingFooter />
     </div>
   );
 }

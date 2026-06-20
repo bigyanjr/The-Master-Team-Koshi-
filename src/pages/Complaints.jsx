@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import Button from '../components/ui/Button';
 import { StatusBadge } from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
@@ -26,13 +27,12 @@ import { getPublicProjects, getPublicComplaints } from '../utils/projectVisibili
 
 function CivicNotice() {
   return (
-    <div className="flex gap-3 p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-blue-50/40">
-      <Info className="h-5 w-5 text-brand-600 shrink-0 mt-0.5" />
+    <div className="flex gap-3 p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-blue-50/40 dark:border-slate-800 dark:from-slate-900 dark:to-slate-900">
+      <Info className="h-5 w-5 text-brand-600 shrink-0 mt-0.5 dark:text-emerald-400" />
       <div>
-        <p className="text-sm font-semibold text-slate-800">How citizen feedback works</p>
-        <p className="text-sm text-slate-600 mt-1 leading-relaxed">
-          Citizen feedback is treated as public concern, not final proof. Ward officials must review
-          and verify each complaint before it informs project accountability records.
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">About citizen feedback</p>
+        <p className="text-sm text-slate-600 mt-1 leading-relaxed dark:text-slate-400">
+          Your message is shared publicly with the ward office. It is not proof on its own — officials will review it and respond.
         </p>
       </div>
     </div>
@@ -41,16 +41,16 @@ function CivicNotice() {
 
 function ComplaintCard({ complaint, project, ward }) {
   return (
-    <article className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 card-shadow hover:border-slate-300/80 transition-colors">
+    <article className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 card-shadow hover:border-slate-300/80 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:hover:border-slate-700">
       <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={complaint.status} />
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full dark:bg-slate-800 dark:text-slate-400">
             <Tag className="h-3 w-3" />
             {getComplaintCategoryLabel(complaint.category)}
           </span>
         </div>
-        <span className="inline-flex items-center gap-1 text-xs text-slate-400 shrink-0">
+        <span className="inline-flex items-center gap-1 text-xs text-slate-400 shrink-0 dark:text-slate-500">
           <Calendar className="h-3 w-3" />
           {formatDate(complaint.createdAt)}
         </span>
@@ -59,20 +59,20 @@ function ComplaintCard({ complaint, project, ward }) {
       {project ? (
         <Link
           to={`/projects/${complaint.projectId}`}
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800 hover:underline mb-2"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800 hover:underline mb-2 dark:text-emerald-400 dark:hover:text-emerald-300"
         >
           <FolderKanban className="h-3.5 w-3.5 shrink-0" />
           {project.title}
         </Link>
       ) : complaint.projectTitle && (
-        <p className="text-sm font-semibold text-brand-700 mb-2">{complaint.projectTitle}</p>
+        <p className="text-sm font-semibold text-brand-700 mb-2 dark:text-emerald-400">{complaint.projectTitle}</p>
       )}
 
-      <p className="text-sm text-slate-700 leading-relaxed">{complaint.message}</p>
+      <p className="text-sm text-slate-700 leading-relaxed dark:text-slate-300">{complaint.message}</p>
 
       {resolveFileUrl(complaint) && (
-        <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+        <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-100 dark:bg-slate-800/60 dark:border-slate-700">
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2 dark:text-slate-400">
             Attached evidence
           </p>
           {isImageFileType(complaint.evidence?.fileType) || resolveFileUrl(complaint)?.startsWith('data:image') ? (
@@ -97,7 +97,7 @@ function ComplaintCard({ complaint, project, ward }) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
         <span className="inline-flex items-center gap-1">
           <User className="h-3 w-3" />
           {getCitizenDisplayName(complaint.citizenName)}
@@ -111,6 +111,7 @@ function ComplaintCard({ complaint, project, ward }) {
 export default function Complaints() {
   const { publicProjects, projects, wards, addComplaint } = useData();
   const { profile, isAuthenticated } = useAuth();
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
 
   const [form, setForm] = useState({
@@ -207,30 +208,30 @@ export default function Complaints() {
     <div className="page-container py-8 sm:py-10">
       {/* Header */}
       <div className="mb-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-semibold mb-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-semibold mb-4 dark:bg-emerald-950/40 dark:text-emerald-300">
           <Shield className="h-3.5 w-3.5" />
-          Public feedback
+          {t('complaints.badge')}
         </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-950 tracking-tight">
-          Submit Public Feedback
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-950 tracking-tight dark:text-slate-50">
+          {t('complaints.title')}
         </h1>
-        <p className="text-slate-600 mt-2 max-w-2xl leading-relaxed text-base">
-          Report delay, poor quality work, missing proof, or transparency concerns about published ward projects.
+        <p className="text-slate-600 mt-2 max-w-2xl leading-relaxed text-base dark:text-slate-400">
+          Tell the ward office about delays, work quality, missing proof, or other concerns on published projects.
         </p>
       </div>
 
       <div className="mb-8">
         <CivicNotice />
         {!isAuthenticated && (
-          <div className="mt-4 flex gap-2.5 p-4 rounded-xl bg-brand-50 border border-brand-100 text-sm text-brand-900">
-            <LogIn className="h-4 w-4 shrink-0 mt-0.5 text-brand-600" />
+          <div className="mt-4 flex gap-2.5 p-4 rounded-xl bg-brand-50 border border-brand-100 text-sm text-brand-900 dark:bg-emerald-950/30 dark:border-emerald-900 dark:text-emerald-200">
+            <LogIn className="h-4 w-4 shrink-0 mt-0.5 text-brand-600 dark:text-emerald-400" />
             <p className="leading-relaxed">
               Login to track your submitted complaints.{' '}
-              <Link to="/login" className="font-semibold text-brand-800 hover:underline">
+              <Link to="/login" className="font-semibold text-brand-800 hover:underline dark:text-emerald-300">
                 Sign in
               </Link>
               {' '}or{' '}
-              <Link to="/register" className="font-semibold text-brand-800 hover:underline">
+              <Link to="/register" className="font-semibold text-brand-800 hover:underline dark:text-emerald-300">
                 create an account
               </Link>
               .
@@ -242,15 +243,15 @@ export default function Complaints() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-10">
         {/* Form */}
         <div className="lg:col-span-2">
-          <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden card-shadow-lg sticky top-24 flex flex-col max-h-[calc(100vh-6.5rem)]">
-            <div className="px-5 sm:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-brand-50/80 to-slate-50 shrink-0">
+          <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden card-shadow-lg sticky top-24 flex flex-col max-h-[calc(100vh-6.5rem)] dark:bg-slate-900 dark:border-slate-800">
+            <div className="px-5 sm:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-brand-50/80 to-slate-50 shrink-0 dark:border-slate-800 dark:from-slate-800/60 dark:to-slate-900">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-brand-100 text-brand-700">
+                <div className="p-2 rounded-xl bg-brand-100 text-brand-700 dark:bg-emerald-900/50 dark:text-emerald-300">
                   <MessageSquareHeart className="h-4 w-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-900">Share your concern</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">All fields marked * are required</p>
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">{t('complaints.shareYourConcern')}</h2>
+                  <p className="text-xs text-slate-500 mt-0.5 dark:text-slate-400">{t('complaints.requiredNote')}</p>
                 </div>
               </div>
             </div>
@@ -267,11 +268,11 @@ export default function Complaints() {
                 />
               ) : submitted ? (
                 <div className="text-center py-4">
-                  <div className="inline-flex p-3 rounded-full bg-emerald-100 text-emerald-600 mb-4">
+                  <div className="inline-flex p-3 rounded-full bg-emerald-100 text-emerald-600 mb-4 dark:bg-emerald-900/40 dark:text-emerald-400">
                     <CheckCircle className="h-8 w-8" />
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900">Thank you for participating</h3>
-                  <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">{t('complaints.thankYou')}</h3>
+                  <p className="text-sm text-slate-600 mt-2 leading-relaxed dark:text-slate-400">
                     Your feedback has been submitted for review. It will appear as public feedback
                     after verification.
                   </p>
@@ -280,14 +281,14 @@ export default function Complaints() {
                     className="mt-6 w-full sm:w-auto"
                     onClick={() => setSubmitted(false)}
                   >
-                    Submit another concern
+                    {t('complaints.submitAnother')}
                   </Button>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                   <div>
-                    <label htmlFor="wardNo" className="block text-sm font-medium text-slate-700 mb-1">
-                      Ward <span className="text-red-500">*</span>
+                    <label htmlFor="wardNo" className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">
+                      {t('field.ward')} <span className="text-red-500">*</span>
                     </label>
                     <WardSelect
                       id="wardNo"
@@ -300,8 +301,8 @@ export default function Complaints() {
                   </div>
 
                   <div>
-                    <label htmlFor="projectId" className="block text-sm font-medium text-slate-700 mb-1">
-                      Project <span className="text-red-500">*</span>
+                    <label htmlFor="projectId" className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">
+                      {t('field.project')} <span className="text-red-500">*</span>
                     </label>
                     <select
                       id="projectId"
@@ -323,8 +324,8 @@ export default function Complaints() {
                   </div>
 
                   <div>
-                    <label htmlFor="category" className="block text-sm font-medium text-slate-700 mb-1">
-                      Concern category <span className="text-red-500">*</span>
+                    <label htmlFor="category" className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">
+                      {t('field.category')} <span className="text-red-500">*</span>
                     </label>
                     <select
                       id="category"
@@ -341,8 +342,8 @@ export default function Complaints() {
                   </div>
 
                   <div>
-                    <label htmlFor="message" className="block text-sm font-medium text-slate-700 mb-1">
-                      Your message <span className="text-red-500">*</span>
+                    <label htmlFor="message" className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">
+                      {t('field.message')} <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       id="message"
@@ -355,19 +356,19 @@ export default function Complaints() {
                     <FieldError message={errors.message} />
                   </div>
 
-                  <div className="pt-2 border-t border-slate-100">
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3 dark:text-slate-400">
                       {isAuthenticated ? 'Your contact details (from profile)' : 'Optional contact details'}
                     </p>
                     {isAuthenticated && (
-                      <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                      <p className="text-xs text-slate-500 mb-3 leading-relaxed dark:text-slate-400">
                         Pre-filled from your account. You can update your phone before submitting.
                       </p>
                     )}
                     <div className="space-y-3">
                       <div>
-                        <label htmlFor="citizenName" className="block text-sm font-medium text-slate-700 mb-1">
-                          Your name
+                        <label htmlFor="citizenName" className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">
+                          {t('field.name')}
                         </label>
                         <input
                           id="citizenName"
@@ -380,8 +381,8 @@ export default function Complaints() {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-1">
-                            Phone
+                          <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">
+                            {t('field.phone')}
                           </label>
                           <input
                             id="phone"
@@ -393,8 +394,8 @@ export default function Complaints() {
                           />
                         </div>
                         <div>
-                          <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
-                            Email
+                          <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">
+                            {t('field.email')}
                           </label>
                           <input
                             id="email"
@@ -420,13 +421,13 @@ export default function Complaints() {
                     error={errors.evidence}
                     storageFolder="complaints"
                   />
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
                     Optional — attach a photo or PDF to support your concern
                   </p>
 
-                  <div className="sticky bottom-0 pt-2 pb-1 bg-white">
+                  <div className="sticky bottom-0 pt-2 pb-1 bg-white dark:bg-slate-900">
                     <Button type="submit" disabled={submitting} icon={Send} className="w-full">
-                      {submitting ? 'Submitting…' : 'Submit feedback'}
+                      {submitting ? t('complaints.submitting') : t('complaints.submit')}
                     </Button>
                   </div>
                 </form>
@@ -439,8 +440,8 @@ export default function Complaints() {
         <div className="lg:col-span-3 lg:max-h-[calc(100vh-6.5rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
           <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Public feedback board</h2>
-              <p className="text-sm text-slate-500 mt-0.5">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">{t('complaints.board')}</h2>
+              <p className="text-sm text-slate-500 mt-0.5 dark:text-slate-400">
                 {complaints.length} submission{complaints.length !== 1 ? 's' : ''}
                 {verifiedCount > 0 && ` · ${verifiedCount} reviewed by officials`}
               </p>

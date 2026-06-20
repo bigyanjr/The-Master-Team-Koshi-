@@ -1,9 +1,9 @@
 const variants = {
   primary: 'bg-brand-800 text-white hover:bg-brand-900 shadow-sm border border-brand-900/10',
-  secondary: 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm',
+  secondary: 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700',
   emerald: 'bg-emerald-700 text-white hover:bg-emerald-800 shadow-sm border border-emerald-800/10',
   amber: 'bg-amber-700 text-white hover:bg-amber-800 shadow-sm',
-  ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+  ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
   danger: 'bg-red-700 text-white hover:bg-red-800 shadow-sm',
 };
 

@@ -4,22 +4,13 @@ export const WARD_MITRA_NAME = 'Ward Mitra';
 
 export const WARD_MITRA_IDENTITY = {
   name: WARD_MITRA_NAME,
-  role: `AI assistant of ${PRODUCT_NAME}`,
+  role: `Civic assistant for ${PRODUCT_NAME}`,
   purpose:
-    'Help citizens understand Itahari ward budgets, tenders, contractors, payments, proof uploads, project progress, complaints, and transparency risks.',
+    'Help citizens understand Itahari ward budgets, projects, payments, proof photos, progress, and feedback.',
 };
 
 export const WARD_MITRA_INTRO =
-  'Namaste, I am Ward Mitra. Ask me about Itahari ward budget, projects, payments, proof, complaints, or transparency risks.';
-
-export const NEUTRAL_RISK_TERMS = [
-  'potential governance risk',
-  'needs verification',
-  'public proof missing',
-  'transparency concern',
-  'budget-progress mismatch',
-  'high citizen concern',
-];
+  'Namaste, I am Ward Mitra. Ask me about ward budgets, projects, payments, proof, or feedback in simple words.';
 
 export function getFirstName(userProfile) {
   const name = userProfile?.fullName?.trim();
@@ -30,16 +21,16 @@ export function getFirstName(userProfile) {
 export function buildGreeting(userProfile) {
   const first = getFirstName(userProfile);
   if (first) {
-    return `Hi ${first}, I am ${WARD_MITRA_NAME}. I can help you understand Itahari ward budgets, projects, payments, proof, complaints, and risk flags. How can I help you today?`;
+    return `Hi ${first}, I am ${WARD_MITRA_NAME}. I can help you understand Itahari ward spending, projects, and payments. What would you like to know?`;
   }
-  return `Hi, I am ${WARD_MITRA_NAME}. I can help you understand Itahari ward budgets, projects, payments, proof, complaints, and risk flags. How can I help you today?`;
+  return `Hi, I am ${WARD_MITRA_NAME}. I can help you understand Itahari ward spending, projects, and payments. What would you like to know?`;
 }
 
 export const IDENTITY_ANSWER =
-  `I am ${WARD_MITRA_NAME}, the AI assistant of ${PRODUCT_NAME}. I help citizens understand ward budgets, tenders, payments, project progress, proof uploads, complaints, and possible transparency risks in simple language.`;
+  `I am ${WARD_MITRA_NAME}, the civic assistant for ${PRODUCT_NAME}. I explain ward budgets, projects, payments, progress, and feedback in plain language.`;
 
 export const WARDWATCH_HISTORY_ANSWER =
-  `${PRODUCT_NAME} was created as a good governance solution to make local government spending easier for citizens to understand. It connects budget allocation, tender details, contractor information, payment updates, proof photos, project progress, and citizen feedback in one public platform.`;
+  `${PRODUCT_NAME} helps citizens follow local ward spending. It brings together budget, contractor details, payments, proof photos, progress updates, and citizen feedback in one public place.`;
 
 export const UNKNOWN_FALLBACK_HINT =
-  `I can help with ward budgets, projects, payments, contractors, complaints, delays, and transparency risks. Try asking something like "Where did Ward 3 budget go?" or "Show high risk projects".`;
+  'Try asking about ward budgets, projects, payments, contractors, delays, or feedback. For example: "Where did Ward 3 budget go?" or "Which projects are delayed?"';

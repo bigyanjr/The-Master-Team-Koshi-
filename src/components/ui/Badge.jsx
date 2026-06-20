@@ -1,10 +1,10 @@
 const colorMap = {
-  slate: 'bg-slate-100 text-slate-700 ring-slate-500/15',
-  blue: 'bg-blue-50 text-blue-800 ring-blue-600/15',
-  amber: 'bg-amber-50 text-amber-800 ring-amber-600/15',
-  emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-600/15',
-  red: 'bg-red-50 text-red-800 ring-red-600/15',
-  brand: 'bg-brand-50 text-brand-800 ring-brand-600/15',
+  slate: 'bg-slate-100 text-slate-700 ring-slate-500/15 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-500/20',
+  blue: 'bg-blue-50 text-blue-800 ring-blue-600/15 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-400/20',
+  amber: 'bg-amber-50 text-amber-800 ring-amber-600/15 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-400/20',
+  emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-600/15 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-400/20',
+  red: 'bg-red-50 text-red-800 ring-red-600/15 dark:bg-red-950/50 dark:text-red-300 dark:ring-red-400/20',
+  brand: 'bg-brand-50 text-brand-800 ring-brand-600/15 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-500/20',
 };
 
 export default function Badge({ children, color = 'slate', size = 'sm', className = '', dot = false }) {

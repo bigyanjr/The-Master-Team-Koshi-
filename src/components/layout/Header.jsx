@@ -6,14 +6,15 @@ import {
 } from 'lucide-react';
 import Button from '../ui/Button';
 import BrandLogo from './BrandLogo';
+import ThemeToggle from '../ui/ThemeToggle';
 import { useAuth } from '../../context/AuthContext';
 
 const publicNav = [
   { to: '/', label: 'Home', icon: Home, end: true },
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/dashboard', label: 'Spending', icon: LayoutDashboard },
   { to: '/projects', label: 'Projects', icon: FolderKanban },
   { to: '/ask', label: 'Ask Ward Mitra', icon: Bot },
-  { to: '/complaints', label: 'Complaints', icon: MessageSquareWarning },
+  { to: '/complaints', label: 'Share feedback', icon: MessageSquareWarning },
 ];
 
 export default function Header() {
@@ -40,10 +41,10 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/90">
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/90 dark:bg-slate-950/95 dark:border-slate-800">
         <div className="page-container">
-          <div className="flex items-center min-h-[4.25rem] sm:min-h-[4.5rem] gap-3 sm:gap-4">
-            <BrandLogo to="/" size="nav" className="shrink-0 -ml-1 sm:ml-0" />
+          <div className="flex items-center min-h-[3.75rem] sm:min-h-[4rem] gap-3 sm:gap-4">
+            <BrandLogo to="/" size="sm" className="shrink-0 -ml-1 sm:ml-0" />
 
             <nav className="hidden lg:flex flex-1 items-center justify-center gap-0.5 min-w-0">
               {publicNav.map(({ to, label, icon: Icon, end }) => (
@@ -54,8 +55,8 @@ export default function Header() {
                   className={({ isActive }) =>
                     `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
                       isActive
-                        ? 'bg-brand-50 text-brand-800'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        ? 'bg-brand-50 text-brand-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800'
                     }`
                   }
                 >
@@ -66,6 +67,7 @@ export default function Header() {
             </nav>
 
             <div className="flex items-center gap-2 shrink-0">
+              <ThemeToggle className="hidden sm:inline-flex" />
               {!authLoading && (
                 <>
                   {isAuthenticated ? (
@@ -78,7 +80,7 @@ export default function Header() {
                       {canAccessAdminPortal && (
                         <Link to="/admin" className="hidden sm:block">
                           <Button variant={isAdmin ? 'primary' : 'secondary'} size="sm" icon={Settings}>
-                            Admin
+                            Ward office
                           </Button>
                         </Link>
                       )}
@@ -108,9 +110,10 @@ export default function Header() {
                   )}
                 </>
               )}
+              <ThemeToggle className="sm:hidden" />
               <button
                 type="button"
-                className="lg:hidden p-2.5 rounded-lg text-slate-600 hover:bg-slate-100 focus-ring shrink-0"
+                className="lg:hidden p-2.5 rounded-lg text-slate-600 hover:bg-slate-100 focus-ring shrink-0 dark:text-slate-300 dark:hover:bg-slate-800"
                 onClick={toggleMenu}
                 aria-expanded={mobileOpen}
                 aria-label="Toggle navigation menu"
@@ -130,7 +133,7 @@ export default function Header() {
             onClick={closeMenu}
             aria-label="Close menu"
           />
-          <nav className="absolute top-[4.5rem] inset-x-0 bottom-0 bg-white border-t border-slate-100 overflow-y-auto">
+          <nav className="absolute top-[3.75rem] inset-x-0 bottom-0 bg-white border-t border-slate-100 overflow-y-auto dark:bg-slate-950 dark:border-slate-800">
             <div className="page-container py-4 space-y-1">
               {publicNav.map(({ to, label, icon: Icon, end }) => (
                 <NavLink
@@ -140,7 +143,9 @@ export default function Header() {
                   onClick={closeMenu}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-colors ${
-                      isActive ? 'bg-brand-50 text-brand-800' : 'text-slate-700 hover:bg-slate-50'
+                      isActive
+                        ? 'bg-brand-50 text-brand-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                        : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'
                     }`
                   }
                 >
@@ -148,7 +153,7 @@ export default function Header() {
                   {label}
                 </NavLink>
               ))}
-              <div className="pt-4 mt-4 border-t border-slate-100 space-y-2">
+              <div className="pt-4 mt-4 border-t border-slate-100 space-y-2 dark:border-slate-800">
                 {isAuthenticated ? (
                   <>
                     <Link to="/profile" onClick={closeMenu} className="block">
@@ -159,7 +164,7 @@ export default function Header() {
                     {canAccessAdminPortal && (
                       <Link to="/admin" onClick={closeMenu} className="block">
                         <Button variant="primary" size="md" icon={Settings} className="w-full">
-                          Ward Admin Portal
+                          Ward office portal
                         </Button>
                       </Link>
                     )}

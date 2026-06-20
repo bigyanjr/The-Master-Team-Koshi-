@@ -325,8 +325,8 @@ export function answerCitizenQuery(question, projects, wards) {
 
 export const SUGGESTED_QUESTIONS = [
   'Where did ward budget go?',
-  'Show high risk projects',
   'Which projects are delayed?',
   'Who got the road contract?',
+  'Show Ward 3 projects',
   'Ward budget kaha kharcha bhayo?',
 ];

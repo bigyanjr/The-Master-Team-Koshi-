@@ -36,13 +36,13 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       {successMessage && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-900">
-          <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600 mt-0.5" />
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-900 dark:bg-emerald-950/30 dark:border-emerald-900 dark:text-emerald-200">
+          <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600 mt-0.5 dark:text-emerald-400" />
           <p className="flex-1 leading-relaxed">{successMessage}</p>
           <button
             type="button"
             onClick={dismissSuccess}
-            className="text-emerald-600 hover:text-emerald-800 shrink-0"
+            className="text-emerald-600 hover:text-emerald-800 shrink-0 dark:text-emerald-400 dark:hover:text-emerald-300"
             aria-label="Dismiss"
           >
             <X className="h-4 w-4" />
@@ -51,23 +51,23 @@ export default function AdminDashboard() {
       )}
 
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-brand-950">
-          Ward {wardNo} Admin Dashboard
+        <h1 className="text-xl sm:text-2xl font-bold text-brand-950 dark:text-slate-50">
+          Ward {wardNo} — Office Portal
         </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Publish and manage official records for Itahari Ward {wardNo}.
+        <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">
+          Publish projects, payments, and proof photos for citizens to see.
         </p>
       </div>
 
       <AdminQuickActions />
 
       <section>
-        <h2 className="text-sm font-bold text-slate-700 mb-3">Your ward at a glance</h2>
+        <h2 className="text-sm font-bold text-slate-700 mb-3 dark:text-slate-300">Your ward at a glance</h2>
         <AdminKPIs projects={wardProjects} demoWardNo={wardNo} />
       </section>
 
       {wardProjects.length === 0 ? (
-        <section className="rounded-2xl border border-dashed border-slate-200 bg-white card-shadow">
+        <section className="rounded-2xl border border-dashed border-slate-200 bg-white card-shadow dark:bg-slate-900 dark:border-slate-700">
           <EmptyState
             icon={FolderKanban}
             title={`No projects added for Ward ${wardNo} yet`}
@@ -83,19 +83,19 @@ export default function AdminDashboard() {
         </section>
       )}
       {wardActivity.length > 0 ? (
-        <section className="rounded-xl border border-slate-200 bg-white p-5 card-shadow">
-          <h2 className="text-sm font-bold text-slate-700 mb-3">Recent ward activity</h2>
+        <section className="rounded-xl border border-slate-200 bg-white p-5 card-shadow dark:bg-slate-900 dark:border-slate-800">
+          <h2 className="text-sm font-bold text-slate-700 mb-3 dark:text-slate-300">Recent ward activity</h2>
           <ul className="space-y-2">
             {wardActivity.slice(0, 6).map((item) => (
-              <li key={item.id} className="text-sm text-slate-600 flex justify-between gap-3">
+              <li key={item.id} className="text-sm text-slate-600 flex justify-between gap-3 dark:text-slate-300">
                 <span>{item.title} — {item.detail}</span>
-                <span className="text-xs text-slate-400 shrink-0">{item.date}</span>
+                <span className="text-xs text-slate-400 shrink-0 dark:text-slate-500">{item.date}</span>
               </li>
             ))}
           </ul>
         </section>
       ) : (
-        <section className="rounded-xl border border-dashed border-slate-200 bg-white p-5 card-shadow">
+        <section className="rounded-xl border border-dashed border-slate-200 bg-white p-5 card-shadow dark:bg-slate-900 dark:border-slate-700">
           <EmptyState
             compact
             title="No ward activity yet"

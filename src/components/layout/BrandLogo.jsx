@@ -44,7 +44,7 @@ export default function BrandLogo({ to = '/', size = 'md', className = '' }) {
       aria-label={`${PRODUCT_NAME} home`}
     >
       <span
-        className={`relative inline-flex items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-slate-200/90 shadow-md ${dims.box}`}
+        className={`relative inline-flex items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-slate-200/90 shadow-md dark:ring-slate-700 ${dims.box}`}
       >
         <img
           src={LOGO_SRC}

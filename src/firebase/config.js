@@ -11,6 +11,7 @@ export const COLLECTIONS = {
   activityLogs: 'activityLogs',
   aiFeedback: 'aiFeedback',
   bookmarks: 'bookmarks',
+  settings: 'settings',
 };
 
 /**

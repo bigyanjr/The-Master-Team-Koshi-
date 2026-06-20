@@ -21,28 +21,28 @@ export default function AdminActivityFeed({ activities, limit = 8 }) {
         <CardHeader title="Recent Admin Activity" subtitle="Transparency updates posted by ward IT" className="!mb-0" />
       </div>
       {recent.length === 0 ? (
-        <p className="p-6 text-sm text-slate-500 text-center">No admin activity recorded yet.</p>
+        <p className="p-6 text-sm text-slate-500 text-center dark:text-slate-400">No admin activity recorded yet.</p>
       ) : (
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {recent.map((item) => {
             const config = TYPE_CONFIG[item.type] || TYPE_CONFIG.proof;
             const Icon = config.icon;
             return (
-              <div key={item.id} className="flex items-start gap-3 p-4 sm:px-6 hover:bg-slate-50/50 transition-colors">
+              <div key={item.id} className="flex items-start gap-3 p-4 sm:px-6 hover:bg-slate-50/50 transition-colors dark:hover:bg-slate-800/50">
                 <div className={`p-2 rounded-xl shrink-0 ${config.color}`}>
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                  <p className="text-xs text-slate-500 truncate mt-0.5">{item.detail}</p>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{item.title}</p>
+                  <p className="text-xs text-slate-500 truncate mt-0.5 dark:text-slate-400">{item.detail}</p>
+                  <p className="text-xs text-slate-400 mt-1 dark:text-slate-500">
                     {formatDate(item.date)} · {formatRelativeTime(item.date)}
                   </p>
                 </div>
                 {item.projectId && (
                   <Link
                     to={`/projects/${item.projectId}`}
-                    className="text-xs font-medium text-brand-700 hover:text-brand-800 shrink-0"
+                    className="text-xs font-medium text-brand-700 hover:text-brand-800 shrink-0 dark:text-emerald-400 dark:hover:text-emerald-300"
                   >
                     View
                   </Link>

@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { MUNICIPALITY_DEMO } from '../config/branding';
+import { MUNICIPALITY_NAME } from '../config/branding';
 import { Link } from 'react-router-dom';
-import { Bot, Send, User, Sparkles, Shield, Zap, Globe } from 'lucide-react';
+import { Bot, Send, User, Shield } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
 import { SUGGESTED_QUESTIONS } from '../utils/citizenQueryEngine';
 import { respondAsWardMitra } from '../ai/wardMitraResponder';
 import { WARD_MITRA_INTRO, WARD_MITRA_NAME } from '../ai/wardMitraConfig';
+import { useLanguage } from '../context/LanguageContext';
 
 function ChatMessage({ role, content, timestamp }) {
   const isBot = role === 'bot';
@@ -23,13 +24,13 @@ function ChatMessage({ role, content, timestamp }) {
       <div className={`max-w-[88%] sm:max-w-[78%] ${isBot ? '' : 'text-right'}`}>
         <div className={`inline-block text-left rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-line shadow-sm ${
           isBot
-            ? 'bg-white border border-slate-200/80 text-slate-700 rounded-tl-sm'
+            ? 'bg-white border border-slate-200/80 text-slate-700 rounded-tl-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200'
             : 'bg-gradient-to-br from-brand-600 to-brand-700 text-white rounded-tr-sm'
         }`}>
           {content}
         </div>
         {timestamp && (
-          <p className={`text-[10px] text-slate-400 mt-1 ${isBot ? '' : 'text-right'}`}>{timestamp}</p>
+          <p className={`text-[10px] text-slate-400 mt-1 dark:text-slate-500 ${isBot ? '' : 'text-right'}`}>{timestamp}</p>
         )}
       </div>
     </div>
@@ -42,12 +43,12 @@ function TypingIndicator() {
       <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white flex items-center justify-center shadow-sm">
         <Bot className="h-4 w-4" />
       </div>
-      <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-5 py-3.5 shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-5 py-3.5 shadow-sm dark:bg-slate-800 dark:border-slate-700">
         <div className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: '0ms' }} />
           <span className="h-2 w-2 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: '150ms' }} />
           <span className="h-2 w-2 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-          <span className="text-xs text-slate-400 ml-2">{WARD_MITRA_NAME} is thinking…</span>
+          <span className="text-xs text-slate-400 ml-2 dark:text-slate-500">{WARD_MITRA_NAME} is thinking…</span>
         </div>
       </div>
     </div>
@@ -57,10 +58,11 @@ function TypingIndicator() {
 export default function CitizenQueryBot() {
   const { publicProjects, wards } = useData();
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [messages, setMessages] = useState([
     {
       role: 'bot',
-      content: `${WARD_MITRA_INTRO}\n\nTry English or Roman Nepali:\n• "Where did ward budget go?"\n• "Ward budget kaha kharcha bhayo?"\n• "Show high risk projects"`,
+      content: `${WARD_MITRA_INTRO}\n\nTry English or Roman Nepali:\n• "Where did ward budget go?"\n• "Ward budget kaha kharcha bhayo?"\n• "Which projects are delayed?"`,
       timestamp: 'Just now',
     },
   ]);
@@ -96,43 +98,30 @@ export default function CitizenQueryBot() {
   return (
     <div className="min-h-[calc(100vh-4rem)] dashboard-bg">
       <div className="page-container py-8 sm:py-10">
-        {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-white border border-slate-200/90 text-slate-600 text-[11px] font-semibold mb-5">
-            <Sparkles className="h-3.5 w-3.5 text-brand-700" />
-            AI-Powered · Local Data · Instant Answers
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight dark:text-slate-50">
             Ask {WARD_MITRA_NAME}
           </h1>
-          <p className="text-slate-500 mt-3 max-w-xl mx-auto leading-relaxed">
-            Your Itahari civic assistant — answers from public project records on {MUNICIPALITY_DEMO}.
+          <p className="text-slate-500 mt-3 max-w-xl mx-auto leading-relaxed text-base dark:text-slate-400">
+            Your civic assistant for {MUNICIPALITY_NAME} — answers from published ward records only.
           </p>
         </div>
 
-        {/* Chat container */}
-        <div className="rounded-xl border border-slate-200/90 bg-white overflow-hidden card-shadow-md max-w-4xl mx-auto">
-          <div className="px-5 py-4 bg-brand-900 text-white flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-white/10">
-                <Bot className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-semibold text-sm">{WARD_MITRA_NAME}</p>
-                <p className="text-xs text-slate-300 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  WardWatch Itahari · {publicProjects.length} published project{publicProjects.length !== 1 ? 's' : ''} indexed
-                </p>
-              </div>
+        <div className="rounded-xl border border-slate-200/90 bg-white overflow-hidden card-shadow-md max-w-4xl mx-auto dark:bg-slate-900 dark:border-slate-800">
+          <div className="px-5 py-4 bg-brand-900 text-white flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-white/10">
+              <Bot className="h-5 w-5" />
             </div>
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-brand-200 bg-white/10 px-3 py-1.5 rounded-full">
-              <Globe className="h-3.5 w-3.5" />
-              EN + Roman Nepali
+            <div>
+              <p className="font-semibold text-sm">{WARD_MITRA_NAME}</p>
+              <p className="text-xs text-slate-300 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                {publicProjects.length} published project{publicProjects.length !== 1 ? 's' : ''} available
+              </p>
             </div>
           </div>
 
-          {/* Messages */}
-          <div className="h-[min(52vh,480px)] overflow-y-auto p-4 sm:p-6 space-y-5 bg-slate-50/30">
+          <div className="h-[min(52vh,480px)] overflow-y-auto p-4 sm:p-6 space-y-5 bg-slate-50/30 dark:bg-slate-950/40">
             {messages.map((msg, i) => (
               <ChatMessage key={`${msg.role}-${i}`} {...msg} />
             ))}
@@ -140,11 +129,8 @@ export default function CitizenQueryBot() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Input area */}
-          <div className="border-t border-slate-100 bg-white p-4 sm:p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1">
-              <Zap className="h-3 w-3" /> Try a demo question
-            </p>
+          <div className="border-t border-slate-100 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
+            <p className="text-sm font-semibold text-slate-600 mb-3 dark:text-slate-300">{t('ask.tryAsking')}</p>
             <div className="flex flex-wrap gap-2 mb-4">
               {SUGGESTED_QUESTIONS.map((q) => (
                 <button
@@ -152,7 +138,7 @@ export default function CitizenQueryBot() {
                   type="button"
                   onClick={() => submitQuestion(q)}
                   disabled={typing}
-                  className="text-xs px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 hover:bg-brand-50 hover:border-brand-200 hover:text-brand-800 transition-all disabled:opacity-50 font-medium"
+                  className="text-sm px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-brand-50 hover:border-brand-200 hover:text-brand-800 transition-all disabled:opacity-50 font-medium dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-emerald-950/40 dark:hover:border-emerald-800 dark:hover:text-emerald-300"
                 >
                   {q}
                 </button>
@@ -169,20 +155,20 @@ export default function CitizenQueryBot() {
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about ward budget, delays, risk, contractors…"
+                placeholder={t('ask.inputPlaceholder')}
                 disabled={typing}
-                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-300 transition-colors disabled:opacity-60"
+                className="flex-1 px-4 py-3.5 rounded-xl border border-slate-200 text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-300 transition-colors disabled:opacity-60 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:focus:bg-slate-800 dark:placeholder:text-slate-500"
               />
-              <Button type="submit" icon={Send} disabled={typing || !input.trim()} className="shrink-0">
-                {typing ? '…' : 'Send'}
+              <Button type="submit" icon={Send} size="md" disabled={typing || !input.trim()} className="shrink-0">
+                {typing ? '…' : t('ask.send')}
               </Button>
             </form>
 
-            <div className="flex items-start gap-2 mt-4 p-3 rounded-xl bg-blue-50/80 border border-blue-100">
-              <Shield className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-              <p className="text-xs text-blue-800 leading-relaxed">
-                <strong>Answers are generated from public project data.</strong> They are informational summaries — not legal findings or accusations.{' '}
-                <Link to="/dashboard" className="underline font-medium hover:text-blue-900">View dashboard →</Link>
+            <div className="flex items-start gap-2 mt-4 p-3 rounded-xl bg-blue-50/80 border border-blue-100 dark:bg-blue-950/30 dark:border-blue-900/60">
+              <Shield className="h-4 w-4 text-blue-600 shrink-0 mt-0.5 dark:text-blue-400" />
+              <p className="text-xs text-blue-800 leading-relaxed dark:text-blue-300">
+                Answers come from public ward records — not legal advice.{' '}
+                <Link to="/dashboard" className="underline font-medium hover:text-blue-900 dark:hover:text-blue-200">{t('ask.viewSpendingLink')}</Link>
               </p>
             </div>
           </div>

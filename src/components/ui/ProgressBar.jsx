@@ -23,11 +23,11 @@ export default function ProgressBar({
     <div className={className}>
       {showLabel && (
         <div className="flex justify-between text-xs mb-2">
-          <span className="text-slate-500 font-medium">Progress</span>
-          <span className="font-semibold text-slate-800 tabular-nums">{Math.round(pct)}%</span>
+          <span className="text-slate-500 font-medium dark:text-slate-400">Progress</span>
+          <span className="font-semibold text-slate-800 tabular-nums dark:text-red-400">{Math.round(pct)}%</span>
         </div>
       )}
-      <div className={`w-full bg-slate-100 rounded-full overflow-hidden ${height}`}>
+      <div className={`w-full bg-slate-100 rounded-full overflow-hidden dark:bg-slate-800 ${height}`}>
         <div
           className={`${height} ${barColor} rounded-full transition-all duration-500 ease-out`}
           style={{ width: `${pct}%` }}
