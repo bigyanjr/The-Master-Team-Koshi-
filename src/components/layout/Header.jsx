@@ -18,7 +18,7 @@ const publicNav = [
 export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, isWardAdmin, profile, logout, loading: authLoading } = useAuth();
+  const { isAuthenticated, canAccessAdminPortal, profile, logout, loading: authLoading } = useAuth();
   const isAdmin = location.pathname.startsWith('/admin');
   const [menuPath, setMenuPath] = useState(null);
   const mobileOpen = menuPath === location.pathname;
@@ -73,7 +73,7 @@ export default function Header() {
                           {profile?.fullName?.split(' ')[0] || 'Profile'}
                         </Button>
                       </Link>
-                      {isWardAdmin && (
+                      {canAccessAdminPortal && (
                         <Link to="/admin" className="hidden sm:block">
                           <Button variant={isAdmin ? 'primary' : 'secondary'} size="sm" icon={Settings}>
                             Admin
@@ -153,7 +153,7 @@ export default function Header() {
                         Profile
                       </Button>
                     </Link>
-                    {isWardAdmin && (
+                    {canAccessAdminPortal && (
                       <Link to="/admin" onClick={closeMenu} className="block">
                         <Button variant="primary" size="md" icon={Settings} className="w-full">
                           Ward Admin Portal

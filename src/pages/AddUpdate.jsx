@@ -5,6 +5,7 @@ import {
   Camera, Flag, FolderKanban, ShieldCheck, ChevronRight,
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
 import { StatusBadge } from '../components/ui/Badge';
 import ProgressBar from '../components/ui/ProgressBar';
@@ -19,6 +20,7 @@ import {
   applyProjectUpdate,
 } from '../services/updateService';
 import { formatCurrency } from '../utils/formatters';
+import { assertWardProjectAccess, filterProjectsForAdmin } from '../services/authService';
 
 const TYPE_ICONS = {
   payment: Banknote,
@@ -69,7 +71,8 @@ function StepIndicator({ currentStep }) {
 }
 
 export default function AddUpdate() {
-  const { projects, addPayment, addUpdate, addProof, completeProject, demoAdminWard } = useData();
+  const { projects, addPayment, addUpdate, addProof, completeProject } = useData();
+  const { profile } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -79,12 +82,13 @@ export default function AddUpdate() {
     projectId: searchParams.get('project') || '',
   });
   const [errors, setErrors] = useState({});
+  const [authError, setAuthError] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 
-  const wardProjects = projects.filter((p) => p.wardNo === demoAdminWard);
-  const projectList = wardProjects.length ? wardProjects : projects;
+  const wardProjects = filterProjectsForAdmin(projects, profile);
+  const projectList = wardProjects;
   const selectedProject = projects.find((p) => p.id === form.projectId);
   const TypeIcon = form.updateType ? TYPE_ICONS[form.updateType] : FolderKanban;
 
@@ -118,8 +122,15 @@ export default function AddUpdate() {
     e.preventDefault();
     if (!validateStep(4)) return;
 
+    const project = projects.find((p) => p.id === form.projectId);
+    if (!assertWardProjectAccess(profile, project)) {
+      setAuthError('You are not authorised to manage this ward record.');
+      return;
+    }
+
     setSubmitting(true);
     setErrors({});
+    setAuthError('');
 
     try {
       const summary = await applyProjectUpdate(form, {
@@ -199,6 +210,12 @@ export default function AddUpdate() {
       </div>
 
       <StepIndicator currentStep={step} />
+
+      {authError && (
+        <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm">
+          {authError}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} noValidate>
         {/* Step 1 — Select project */}

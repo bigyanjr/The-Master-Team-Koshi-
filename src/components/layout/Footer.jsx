@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { DEMO_PROJECT_IDS, MUNICIPALITY_DEMO, PRODUCT_NAME, TAGLINE } from '../../config/branding';
 
 export default function Footer() {
-  const { isWardAdmin } = useAuth();
+  const { canAccessAdminPortal } = useAuth();
 
   return (
     <footer className="bg-white border-t border-slate-200/90 mt-auto">
@@ -28,7 +28,7 @@ export default function Footer() {
           <div>
             <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4">For Officials</h4>
             <ul className="space-y-2.5 text-sm text-slate-600">
-              {isWardAdmin ? (
+              {canAccessAdminPortal ? (
                 <>
                   <li><Link to="/admin" className="hover:text-brand-800 transition-colors">Admin Dashboard</Link></li>
                   <li><Link to="/admin/add-project" className="hover:text-brand-800 transition-colors">Add Project</Link></li>

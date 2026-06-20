@@ -14,6 +14,9 @@ export const ROLES = {
   WARD_ADMIN: 'ward_admin',
 };
 
+/** Hackathon demo — in production, ward admins require municipality approval before access. */
+export const MUNICIPALITY_NAME = 'Itahari Sub-Metropolitan City';
+
 export const DEMO_ACCOUNTS = {
   citizen: {
     email: 'citizen@itahari.demo',
@@ -23,6 +26,8 @@ export const DEMO_ACCOUNTS = {
       role: ROLES.PUBLIC,
       wardNo: null,
       phone: '9800000001',
+      approved: true,
+      municipality: MUNICIPALITY_NAME,
     },
   },
   admin: {
@@ -33,6 +38,10 @@ export const DEMO_ACCOUNTS = {
       role: ROLES.WARD_ADMIN,
       wardNo: 1,
       phone: '9800000002',
+      positionTitle: 'Ward IT Officer',
+      municipality: MUNICIPALITY_NAME,
+      approved: true,
+      status: 'approved',
     },
   },
 };
@@ -53,16 +62,34 @@ function nowIso() {
 }
 
 function buildProfile(uid, data) {
-  return {
+  const role = data.role === ROLES.WARD_ADMIN ? ROLES.WARD_ADMIN : ROLES.PUBLIC;
+  const wardRaw = data.wardNo;
+  const wardNo = wardRaw != null && wardRaw !== '' ? Number(wardRaw) : null;
+
+  const profile = {
     uid,
     fullName: data.fullName?.trim() || '',
-    email: normalizeEmail(data.email),
-    role: data.role === ROLES.WARD_ADMIN ? ROLES.WARD_ADMIN : ROLES.PUBLIC,
-    wardNo: data.role === ROLES.WARD_ADMIN ? Number(data.wardNo) || null : null,
+    email: normalizeEmail(data.email || ''),
+    role,
+    wardNo: Number.isFinite(wardNo) ? wardNo : null,
     phone: data.phone?.trim() || null,
+    municipality: data.municipality || MUNICIPALITY_NAME,
+    approved: data.approved !== false,
     createdAt: data.createdAt || nowIso(),
     photoURL: data.photoURL || null,
   };
+
+  if (role === ROLES.WARD_ADMIN) {
+    profile.positionTitle = data.positionTitle?.trim() || null;
+    profile.status = data.status || (profile.approved ? 'approved' : 'pending');
+  }
+
+  return profile;
+}
+
+function normalizeStoredProfile(uid, data) {
+  if (!data) return null;
+  return buildProfile(uid, data);
 }
 
 function getFirebaseAuth() {
@@ -143,29 +170,35 @@ function stripPassword(user) {
   if (!user) return null;
   const copy = { ...user };
   delete copy.password;
-  return copy;
+  return normalizeStoredProfile(copy.uid, copy);
 }
 
-async function localRegister({ fullName, email, password, role, wardNo, phone }) {
+async function localRegister(payload) {
   seedLocalDemoUsers();
 
-  if (findLocalUserByEmail(email)) {
+  if (findLocalUserByEmail(payload.email)) {
     const err = new Error('An account with this email already exists.');
     err.code = 'auth/email-already-in-use';
     throw err;
   }
 
   const uid = generateUid();
+  const isWardAdmin = payload.role === ROLES.WARD_ADMIN;
+
   const profile = buildProfile(uid, {
-    fullName,
-    email,
-    role,
-    wardNo,
-    phone,
+    fullName: payload.fullName,
+    email: payload.email,
+    role: isWardAdmin ? ROLES.WARD_ADMIN : ROLES.PUBLIC,
+    wardNo: isWardAdmin ? payload.wardNo : payload.wardNo || null,
+    phone: payload.phone,
+    positionTitle: payload.positionTitle,
+    municipality: MUNICIPALITY_NAME,
+    approved: true,
+    status: isWardAdmin ? 'approved' : undefined,
   });
 
   const users = readLocalUsers();
-  users.push({ ...profile, password });
+  users.push({ ...profile, password: payload.password });
   writeLocalUsers(users);
   writeLocalSession(uid);
 
@@ -218,7 +251,7 @@ async function firebaseFetchProfile(uid) {
 
   const snap = await getDoc(doc(db, COLLECTIONS.users, uid));
   if (!snap.exists()) return null;
-  return { uid, ...snap.data() };
+  return normalizeStoredProfile(uid, snap.data());
 }
 
 async function firebaseSaveProfile(uid, profile) {
@@ -228,19 +261,24 @@ async function firebaseSaveProfile(uid, profile) {
   return profile;
 }
 
-async function firebaseRegister({ fullName, email, password, role, wardNo, phone }) {
+async function firebaseRegister(payload) {
   const auth = getFirebaseAuth();
   if (!auth) throw new Error('Firebase Auth is not configured');
 
-  const cred = await createUserWithEmailAndPassword(auth, normalizeEmail(email), password);
-  await firebaseUpdateProfile(cred.user, { displayName: fullName.trim() });
+  const cred = await createUserWithEmailAndPassword(auth, normalizeEmail(payload.email), payload.password);
+  await firebaseUpdateProfile(cred.user, { displayName: payload.fullName.trim() });
 
+  const isWardAdmin = payload.role === ROLES.WARD_ADMIN;
   const profile = buildProfile(cred.user.uid, {
-    fullName,
-    email,
-    role,
-    wardNo,
-    phone,
+    fullName: payload.fullName,
+    email: payload.email,
+    role: isWardAdmin ? ROLES.WARD_ADMIN : ROLES.PUBLIC,
+    wardNo: isWardAdmin ? payload.wardNo : payload.wardNo || null,
+    phone: payload.phone,
+    positionTitle: payload.positionTitle,
+    municipality: MUNICIPALITY_NAME,
+    approved: true,
+    status: isWardAdmin ? 'approved' : undefined,
     photoURL: cred.user.photoURL,
   });
 
@@ -260,6 +298,10 @@ async function firebaseLogin(email, password) {
       fullName: cred.user.displayName || cred.user.email?.split('@')[0] || 'User',
       email: cred.user.email,
       role: ROLES.PUBLIC,
+      wardNo: null,
+      phone: null,
+      municipality: MUNICIPALITY_NAME,
+      approved: true,
       photoURL: cred.user.photoURL,
     });
     await firebaseSaveProfile(cred.user.uid, profile);
@@ -293,6 +335,10 @@ function firebaseSubscribe(callback) {
           fullName: user.displayName || user.email?.split('@')[0] || 'User',
           email: user.email,
           role: ROLES.PUBLIC,
+          wardNo: null,
+          phone: null,
+          municipality: MUNICIPALITY_NAME,
+          approved: true,
           photoURL: user.photoURL,
         });
         await firebaseSaveProfile(user.uid, profile);
@@ -311,7 +357,9 @@ export function isAuthConfigured() {
   return isFirebaseConfigured();
 }
 
-export function validateRegistration({ fullName, email, password, confirmPassword, role, wardNo }) {
+export function validateRegistration({
+  fullName, email, password, confirmPassword, role, wardNo, phone,
+}) {
   const errors = {};
 
   if (!fullName?.trim()) errors.fullName = 'Full name is required';
@@ -323,18 +371,38 @@ export function validateRegistration({ fullName, email, password, confirmPasswor
 
   if (password !== confirmPassword) errors.confirmPassword = 'Passwords do not match';
 
-  if (role === ROLES.WARD_ADMIN && !wardNo) {
-    errors.wardNo = 'Ward number is required for ward admin accounts';
+  if (role === ROLES.WARD_ADMIN) {
+    if (!phone?.trim()) errors.phone = 'Phone is required for ward admin accounts';
+    if (!wardNo) errors.wardNo = 'Ward number is required';
+  }
+
+  if (wardNo) {
+    const n = Number(wardNo);
+    if (!Number.isFinite(n) || n < 1 || n > 5) {
+      errors.wardNo = 'Select a valid ward (1–5)';
+    }
   }
 
   return { valid: Object.keys(errors).length === 0, errors };
 }
 
 export async function registerUser(payload) {
+  const isWardAdmin = payload.role === ROLES.WARD_ADMIN;
+
+  const safePayload = {
+    fullName: payload.fullName,
+    email: payload.email,
+    password: payload.password,
+    phone: payload.phone,
+    role: isWardAdmin ? ROLES.WARD_ADMIN : ROLES.PUBLIC,
+    wardNo: isWardAdmin ? payload.wardNo : payload.wardNo || null,
+    positionTitle: isWardAdmin ? payload.positionTitle : null,
+  };
+
   if (isFirebaseConfigured()) {
-    return firebaseRegister(payload);
+    return firebaseRegister(safePayload);
   }
-  return localRegister(payload);
+  return localRegister(safePayload);
 }
 
 export async function loginUser(email, password) {
@@ -342,12 +410,6 @@ export async function loginUser(email, password) {
     return firebaseLogin(email, password);
   }
   return localLogin(email, password);
-}
-
-export async function loginDemoAccount(type) {
-  const account = DEMO_ACCOUNTS[type];
-  if (!account) throw new Error('Unknown demo account');
-  return loginUser(account.email, account.password);
 }
 
 export async function logoutUser() {
@@ -378,6 +440,73 @@ export function isWardAdmin(profile) {
   return profile?.role === ROLES.WARD_ADMIN;
 }
 
+export function isApprovedWardAdmin(profile) {
+  return profile?.role === ROLES.WARD_ADMIN
+    && profile?.approved === true
+    && profile?.wardNo != null;
+}
+
+export function canAccessAdminPortal(profile) {
+  return isApprovedWardAdmin(profile);
+}
+
+export function validatePostLogin(profile) {
+  if (profile?.role === ROLES.WARD_ADMIN) {
+    if (!profile.wardNo) {
+      return {
+        ok: false,
+        error: 'Your ward admin profile is incomplete. Please select or contact support.',
+      };
+    }
+    if (profile.approved !== true) {
+      return {
+        ok: false,
+        error: 'Your ward admin account is not yet approved.',
+      };
+    }
+    return { ok: true, path: '/admin' };
+  }
+
+  return { ok: true, path: '/dashboard' };
+}
+
 export function getPostLoginPath(profile) {
-  return isWardAdmin(profile) ? '/admin' : '/dashboard';
+  return validatePostLogin(profile).path || '/dashboard';
+}
+
+export function getRegistrationSuccessMessage(profile) {
+  if (profile?.role === ROLES.WARD_ADMIN) {
+    return `Ward IT/Admin account created successfully. You are now managing Ward ${profile.wardNo} records.`;
+  }
+  return 'Citizen account created successfully.';
+}
+
+export function assertWardProjectAccess(profile, project) {
+  if (!isApprovedWardAdmin(profile)) return false;
+  return project?.wardNo === profile.wardNo;
+}
+
+export function filterProjectsForAdmin(projects, profile) {
+  if (!isApprovedWardAdmin(profile) || !profile.wardNo) return [];
+  return projects.filter((p) => p.wardNo === profile.wardNo);
+}
+
+export function filterComplaintsForAdmin(projects, profile) {
+  const wardProjects = filterProjectsForAdmin(projects, profile);
+  const wardProjectIds = new Set(wardProjects.map((p) => p.id));
+  return projects.flatMap((p) =>
+    (p.complaints ?? [])
+      .filter(() => wardProjectIds.has(p.id))
+      .map((c) => ({
+        ...c,
+        projectId: p.id,
+        projectTitle: p.title,
+        wardNo: p.wardNo,
+      })),
+  );
+}
+
+export function filterActivityForAdmin(activity, projects, profile) {
+  const wardProjectIds = new Set(filterProjectsForAdmin(projects, profile).map((p) => p.id));
+  return activity.filter((a) => !a.projectId || wardProjectIds.has(a.projectId));
 }

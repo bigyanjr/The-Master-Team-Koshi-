@@ -20,13 +20,14 @@ import { formatCurrency, getWardByNo } from '../utils/formatters';
 import { calculateTrustScore, getRiskLevel } from '../utils/riskEngine';
 
 export default function AddProject() {
-  const { wards, addProject, addProof, demoAdminWard, projects } = useData();
+  const { wards, addProject, addProof, projects } = useData();
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const adminWardNo = profile?.wardNo;
 
   const [form, setForm] = useState({
     ...EMPTY_PROJECT_FORM,
-    wardNo: String(demoAdminWard),
+    wardNo: adminWardNo ? String(adminWardNo) : '',
   });
   const [initialDocument, setInitialDocument] = useState(null);
   const [errors, setErrors] = useState({});
@@ -40,7 +41,8 @@ export default function AddProject() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validation = validateProjectForm(form);
+    const payload = { ...form, wardNo: String(adminWardNo) };
+    const validation = validateProjectForm(payload);
     if (!validation.valid) {
       setErrors(validation.errors);
       return;
@@ -50,7 +52,7 @@ export default function AddProject() {
     setErrors({});
 
     try {
-      const result = await addProject(form);
+      const result = await addProject(payload);
       if (initialDocument?.fileUrl) {
         await addProof({
           projectId: result.id,
@@ -127,7 +129,7 @@ export default function AddProject() {
             variant="ghost"
             onClick={() => {
               setCreated(null);
-              setForm({ ...EMPTY_PROJECT_FORM, wardNo: String(demoAdminWard) });
+              setForm({ ...EMPTY_PROJECT_FORM, wardNo: String(adminWardNo) });
             }}
           >
             Add Another Project
@@ -169,20 +171,15 @@ export default function AddProject() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="wardNo" className="block text-sm font-medium text-slate-700 mb-1">
-                  Ward Number <span className="text-red-500">*</span>
+                  Ward
                 </label>
-                <select
+                <input
                   id="wardNo"
-                  value={form.wardNo}
-                  onChange={(e) => update('wardNo', e.target.value)}
-                  className={inputClass(errors.wardNo)}
-                >
-                  <option value="">Select ward</option>
-                  {wards.map((w) => (
-                    <option key={w.id} value={w.number}>Ward {w.number} — {w.name}</option>
-                  ))}
-                </select>
-                <FieldError message={errors.wardNo} />
+                  value={adminWardNo ? `Ward ${adminWardNo}` : ''}
+                  readOnly
+                  className={`${inputClass(false)} bg-slate-50 text-slate-700 cursor-not-allowed`}
+                />
+                <p className="text-xs text-slate-400 mt-1">Projects are assigned to your logged-in ward.</p>
               </div>
               <div>
                 <label htmlFor="category" className="block text-sm font-medium text-slate-700 mb-1">

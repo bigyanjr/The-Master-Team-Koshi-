@@ -2,13 +2,17 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import Card, { CardHeader } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { DataResponsibilityNotice } from '../components/admin/AdminActivityFeed';
+import { filterProjectsForAdmin, assertWardProjectAccess } from '../services/authService';
 
 export default function AddPayment() {
   const { projects, addPayment } = useData();
+  const { profile } = useAuth();
   const navigate = useNavigate();
+  const wardProjects = filterProjectsForAdmin(projects, profile);
   const [success, setSuccess] = useState(false);
   const [form, setForm] = useState({
     projectId: '',
@@ -18,8 +22,16 @@ export default function AddPayment() {
     remarks: '',
   });
 
+  const [authError, setAuthError] = useState('');
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const project = projects.find((p) => p.id === form.projectId);
+    if (!assertWardProjectAccess(profile, project)) {
+      setAuthError('You are not authorised to manage this ward record.');
+      return;
+    }
+    setAuthError('');
     await addPayment(form);
     setSuccess(true);
     setTimeout(() => navigate('/admin'), 1500);
@@ -40,14 +52,20 @@ export default function AddPayment() {
           </div>
         )}
 
+        {authError && (
+          <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm">
+            {authError}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Project</label>
             <select required value={form.projectId} onChange={(e) => update('projectId', e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30">
               <option value="">Select project</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>W{p.wardNo} — {p.title}</option>
+              {wardProjects.map((p) => (
+                <option key={p.id} value={p.id}>{p.title}</option>
               ))}
             </select>
           </div>

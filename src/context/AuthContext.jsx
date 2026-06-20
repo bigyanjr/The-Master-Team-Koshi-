@@ -5,10 +5,10 @@ import {
   subscribeToAuth,
   registerUser,
   loginUser,
-  loginDemoAccount,
   logoutUser,
   validateRegistration,
   isWardAdmin,
+  isApprovedWardAdmin,
   getPostLoginPath,
   ROLES,
 } from '../services/authService';
@@ -39,12 +39,6 @@ export function AuthProvider({ children }) {
     return nextProfile;
   }, []);
 
-  const loginDemo = useCallback(async (type) => {
-    const nextProfile = await loginDemoAccount(type);
-    setProfile(nextProfile);
-    return nextProfile;
-  }, []);
-
   const logout = useCallback(async () => {
     await logoutUser();
     setProfile(null);
@@ -56,14 +50,15 @@ export function AuthProvider({ children }) {
     loading,
     isAuthenticated: Boolean(profile?.uid && profile?.email),
     isWardAdmin: isWardAdmin(profile),
+    isApprovedWardAdmin: isApprovedWardAdmin(profile),
+    canAccessAdminPortal: isApprovedWardAdmin(profile),
     register,
     login,
-    loginDemo,
     logout,
     validateRegistration,
     getPostLoginPath,
     ROLES,
-  }), [profile, loading, register, login, loginDemo, logout]);
+  }), [profile, loading, register, login, logout]);
 
   return (
     <AuthContext.Provider value={value}>

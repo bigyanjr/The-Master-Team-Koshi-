@@ -4,12 +4,9 @@ import {
   LayoutDashboard, PlusCircle, FileText, Banknote, Camera,
   MessageSquareWarning, ArrowLeft, Shield, Menu, X,
 } from 'lucide-react';
-import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
-import { getWardByNo } from '../../utils/formatters';
 import BrandLogo from './BrandLogo';
 import LoadingSpinner from '../ui/LoadingSpinner';
-import { ROLES } from '../../services/authService';
 
 const adminNav = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -46,11 +43,9 @@ function AdminNavLinks({ onNavigate, className = '' }) {
 }
 
 export default function AdminLayout() {
-  const { wards } = useData();
-  const { profile, isAuthenticated, loading } = useAuth();
+  const { profile, isAuthenticated, loading, canAccessAdminPortal } = useAuth();
   const location = useLocation();
-  const adminWardNo = profile?.wardNo ?? 1;
-  const ward = getWardByNo(wards, adminWardNo);
+  const adminWardNo = profile?.wardNo;
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (loading) {
@@ -61,7 +56,7 @@ export default function AdminLayout() {
     );
   }
 
-  if (!isAuthenticated || profile?.role !== ROLES.WARD_ADMIN) {
+  if (!isAuthenticated || !canAccessAdminPortal) {
     return (
       <Navigate
         to="/login"
@@ -73,7 +68,6 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] dashboard-bg">
-      {/* Admin top bar */}
       <div className="bg-white border-b border-slate-200/90">
         <div className="page-container py-4">
           <div className="flex items-center justify-between gap-4">
@@ -81,10 +75,11 @@ export default function AdminLayout() {
               <BrandLogo to="/dashboard" size="nav" />
               <div className="hidden sm:block h-8 w-px bg-slate-200" />
               <div className="hidden sm:block min-w-0">
-                <p className="text-sm font-semibold text-slate-900 truncate">Ward Admin Portal</p>
+                <p className="text-sm font-semibold text-slate-900 truncate">
+                  Ward {adminWardNo} Admin Portal
+                </p>
                 <p className="text-xs text-slate-500 truncate">
-                  {profile?.fullName ? `${profile.fullName} · ` : ''}
-                  {ward ? `Ward ${ward.number} — ${ward.name}` : 'Demo mode'}
+                  Logged in as Ward {adminWardNo} IT/Admin
                 </p>
               </div>
             </div>
@@ -113,9 +108,14 @@ export default function AdminLayout() {
         </div>
       </div>
 
-      <div className="page-container py-6 sm:py-8">
+      <div className="page-container py-4">
+        <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-sm text-brand-900">
+          Managing official records for Itahari Ward {adminWardNo}
+        </div>
+      </div>
+
+      <div className="page-container pb-6 sm:pb-8">
         <div className="flex gap-8">
-          {/* Desktop sidebar */}
           <aside className="hidden lg:block w-56 shrink-0">
             <div className="sticky top-24 bg-white rounded-xl border border-slate-200/90 p-2 card-shadow">
               <AdminNavLinks />
@@ -128,7 +128,6 @@ export default function AdminLayout() {
         </div>
       </div>
 
-      {/* Mobile sidebar drawer */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button

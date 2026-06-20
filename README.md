@@ -215,6 +215,10 @@ VITE_FIREBASE_APP_ID=
 - Citizens can browse, ask AI, and submit complaints.  
 - Ward admins access `/admin` to add projects, post updates, and review complaints.
 
+**Hackathon demo:** Ward IT/Admin accounts can self-register and are **auto-approved** immediately. In production, municipality approval should be required before admin access is granted.
+
+You can also register new accounts at `/register` — choose **Citizen** or **Ward IT/Admin**.
+
 ---
 
 ## Demo Flow (Hackathon / Judges)
@@ -290,6 +294,7 @@ Branding constants: `src/config/branding.js`
 
 ## Future Scope
 
+- **Production auth:** Ward IT/Admin self-registration with municipality approval workflow before `/admin` access (hackathon demo auto-approves immediately)  
 - Nepali UI (Devanagari) and SMS/notification alerts for citizens and admins  
 - Multi-municipality support and province-level dashboards  
 - Integration with government open-data and tender APIs  

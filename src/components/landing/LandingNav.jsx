@@ -13,7 +13,7 @@ const navLinks = [
 
 export default function LandingNav() {
   const [open, setOpen] = useState(false);
-  const { isAuthenticated, isWardAdmin, profile, logout, loading: authLoading } = useAuth();
+  const { isAuthenticated, canAccessAdminPortal, profile, logout, loading: authLoading } = useAuth();
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
@@ -58,7 +58,7 @@ export default function LandingNav() {
                         {profile?.fullName?.split(' ')[0] || 'Profile'}
                       </Button>
                     </Link>
-                    {isWardAdmin && (
+                    {canAccessAdminPortal && (
                       <Link to="/admin">
                         <Button variant="primary" size="sm" icon={Settings}>
                           Admin
@@ -127,7 +127,7 @@ export default function LandingNav() {
                         Profile
                       </Button>
                     </Link>
-                    {isWardAdmin && (
+                    {canAccessAdminPortal && (
                       <Link to="/admin" onClick={() => setOpen(false)}>
                         <Button variant="primary" size="sm" icon={Settings} className="w-full">
                           Admin Portal
