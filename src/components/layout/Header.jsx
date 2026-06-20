@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Menu, X, LayoutDashboard, FolderKanban, MessageSquareWarning, Settings, Bot,
+  Menu, X, Home, LayoutDashboard, FolderKanban, MessageSquareWarning, Settings, Bot,
   LogIn, UserPlus, User, LogOut,
 } from 'lucide-react';
 import Button from '../ui/Button';
@@ -9,10 +9,11 @@ import BrandLogo from './BrandLogo';
 import { useAuth } from '../../context/AuthContext';
 
 const publicNav = [
+  { to: '/', label: 'Home', icon: Home, end: true },
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/projects', label: 'Projects', icon: FolderKanban },
+  { to: '/ask', label: 'Ask Ward Mitra', icon: Bot },
   { to: '/complaints', label: 'Complaints', icon: MessageSquareWarning },
-  { to: '/ask', label: 'Ask AI', icon: Bot },
 ];
 
 export default function Header() {
@@ -45,10 +46,11 @@ export default function Header() {
             <BrandLogo to="/" size="nav" className="shrink-0 -ml-1 sm:ml-0" />
 
             <nav className="hidden lg:flex flex-1 items-center justify-center gap-0.5 min-w-0">
-              {publicNav.map(({ to, label, icon: Icon }) => (
+              {publicNav.map(({ to, label, icon: Icon, end }) => (
                 <NavLink
                   key={to}
                   to={to}
+                  end={end}
                   className={({ isActive }) =>
                     `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
                       isActive
@@ -130,10 +132,11 @@ export default function Header() {
           />
           <nav className="absolute top-[4.5rem] inset-x-0 bottom-0 bg-white border-t border-slate-100 overflow-y-auto">
             <div className="page-container py-4 space-y-1">
-              {publicNav.map(({ to, label, icon: Icon }) => (
+              {publicNav.map(({ to, label, icon: Icon, end }) => (
                 <NavLink
                   key={to}
                   to={to}
+                  end={end}
                   onClick={closeMenu}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-colors ${

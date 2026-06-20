@@ -12,7 +12,7 @@ import {
   ROLES,
 } from '../services/authService';
 
-const WARD_OPTIONS = [1, 2, 3, 4, 5];
+import WardSelect from '../components/form/WardSelect';
 
 const ACCOUNT_TYPES = [
   {
@@ -36,6 +36,7 @@ export default function Register() {
   const [form, setForm] = useState({
     role: ROLES.PUBLIC,
     fullName: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -58,6 +59,7 @@ export default function Register() {
     setForm((prev) => ({
       ...prev,
       role,
+      username: '',
       wardNo: '',
       positionTitle: '',
     }));
@@ -80,6 +82,7 @@ export default function Register() {
     try {
       const profile = await register({
         fullName: form.fullName,
+        username: form.username,
         email: form.email,
         password: form.password,
         role: form.role,
@@ -96,6 +99,8 @@ export default function Register() {
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') {
         setSubmitError('An account with this email already exists.');
+      } else if (err.code === 'auth/username-already-in-use') {
+        setSubmitError('Username already taken. Please choose another username.');
       } else {
         setSubmitError(err.message || 'Registration failed. Please try again.');
       }
@@ -171,6 +176,27 @@ export default function Register() {
           <FieldError message={errors.fullName} />
         </div>
 
+        {!isWardAdmin && (
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-1">
+              Username <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="username"
+              type="text"
+              autoComplete="username"
+              value={form.username}
+              onChange={(e) => update('username', e.target.value.toLowerCase())}
+              className={inputClass(errors.username)}
+              placeholder="e.g. ram_sharma"
+            />
+            <FieldError message={errors.username} />
+            <p className="mt-1 text-xs text-slate-500">
+              Lowercase letters, numbers, and underscore only. Minimum 3 characters.
+            </p>
+          </div>
+        )}
+
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
             Email <span className="text-red-500">*</span>
@@ -243,21 +269,13 @@ export default function Register() {
               <span className="text-slate-400 font-normal">(optional)</span>
             )}
           </label>
-          <select
+          <WardSelect
             id="wardNo"
             value={form.wardNo}
             onChange={(e) => update('wardNo', e.target.value)}
-            className={inputClass(errors.wardNo)}
-          >
-            <option value="">
-              {isWardAdmin ? 'Select your assigned ward' : 'Select your ward (optional)'}
-            </option>
-            {WARD_OPTIONS.map((n) => (
-              <option key={n} value={n}>
-                Ward {n}
-              </option>
-            ))}
-          </select>
+            emptyLabel={isWardAdmin ? 'Select your assigned ward' : 'Select your ward (optional)'}
+            selectClassName={inputClass(errors.wardNo)}
+          />
           <FieldError message={errors.wardNo} />
         </div>
 

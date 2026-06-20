@@ -1,10 +1,13 @@
 import { Link, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { ScanLine, Smartphone, ArrowLeft, Shield, Info } from 'lucide-react';
+import { ScanLine, Smartphone, ArrowLeft, Shield, Info, FolderKanban } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { findViewableProject } from '../utils/projectVisibility';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import EmptyState from '../components/ui/EmptyState';
 import BrandLogo from '../components/layout/BrandLogo';
-import { getProjectScanUrl, isLocalhostUrl } from '../utils/qrUrl';
+import { getProjectScanUrl, getQrMobileSetupIssue, getSuggestedLanUrl, isLocalhostUrl } from '../utils/qrUrl';
 import { getWardByNo } from '../utils/formatters';
 import { PRODUCT_NAME, MUNICIPALITY_DEMO } from '../config/branding';
 
@@ -17,9 +20,12 @@ const steps = [
 export default function QrDemo() {
   const { id } = useParams();
   const { projects, wards, dataLoading } = useData();
-  const project = projects.find((p) => p.id === id);
+  const { profile } = useAuth();
+  const project = findViewableProject(projects, id, profile);
   const scanUrl = getProjectScanUrl(id);
   const onLocalhost = isLocalhostUrl();
+  const mobileIssue = getQrMobileSetupIssue();
+  const suggestedLanUrl = getSuggestedLanUrl();
 
   if (dataLoading) {
     return (
@@ -31,9 +37,14 @@ export default function QrDemo() {
 
   if (!project) {
     return (
-      <div className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-        <p className="text-slate-600">Demo project not found.</p>
-        <Link to="/" className="mt-4 text-sm font-semibold text-brand-700">Back to home</Link>
+      <div className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center p-6">
+        <EmptyState
+          icon={FolderKanban}
+          title="Project not found"
+          description="This project may not be published yet or may have been removed."
+          actionLabel="View Public Dashboard"
+          actionTo="/dashboard"
+        />
       </div>
     );
   }
@@ -113,7 +124,29 @@ export default function QrDemo() {
             </ol>
           </div>
 
-          {onLocalhost && (
+          {mobileIssue && (
+            <div className="mt-4 flex gap-2.5 p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-900">
+              <Info className="h-4 w-4 shrink-0 mt-0.5" />
+              <div className="leading-relaxed text-xs sm:text-sm space-y-2">
+                <p>{mobileIssue.message}</p>
+                {suggestedLanUrl && (
+                  <p>
+                    Open this on your laptop first, then scan again:{' '}
+                    <code className="font-mono text-[11px] bg-amber-100 px-1 rounded break-all">
+                      {suggestedLanUrl}/qr-demo/{id}
+                    </code>
+                  </p>
+                )}
+                <p className="text-amber-800">
+                  Phone and laptop must be on the <strong>same Wi‑Fi</strong>. Run{' '}
+                  <code className="font-mono text-[11px] bg-amber-100 px-1 rounded">npm run dev</code>{' '}
+                  and allow Node.js through Windows Firewall if asked.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!mobileIssue && onLocalhost && (
             <div className="mt-4 flex gap-2.5 p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-900">
               <Info className="h-4 w-4 shrink-0 mt-0.5" />
               <p className="leading-relaxed text-xs sm:text-sm">

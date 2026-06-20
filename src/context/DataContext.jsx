@@ -1,8 +1,9 @@
 import {
   createContext, useContext, useState, useCallback, useMemo, useEffect, useRef,
 } from 'react';
-import { seedData as initialData } from '../data/seedData';
+import { getInitialAppData } from '../config/demoSeed';
 import { getAllComplaints, getAllPayments } from '../utils/riskEngine';
+import { getPublicProjects } from '../utils/projectVisibility';
 import { isFirebaseConfigured } from '../firebase/config';
 import { bindLocalStore } from '../services/localStore';
 import {
@@ -10,6 +11,7 @@ import {
   addProject as addProjectService,
   addPayment as addPaymentService,
   addProof as addProofService,
+  updateProjectProgress,
 } from '../services/projectService';
 import { getWards } from '../services/wardService';
 import {
@@ -18,43 +20,27 @@ import {
   findComplaintInProjects,
   resolveComplaintId,
 } from '../services/complaintService';
+import {
+  buildActivityEntry,
+  fetchActivityLogs,
+  persistActivityLog,
+} from '../services/activityService';
+import {
+  clearFirestoreData,
+  clearLocalFallbackData,
+  resetDemoData,
+  isDevResetEnabled,
+} from '../services/resetService';
+import {
+  getFreshItahariSeed,
+  seedFreshItahariDemo,
+} from '../services/seedService';
 
 const DataContext = createContext(null);
 
 export const DEMO_ADMIN_WARD = 1;
 
-let idCounter = 1000;
-function nextId(prefix) {
-  idCounter += 1;
-  return `${prefix}-${idCounter}`;
-}
-
-function buildSeedAdminActivity(projects) {
-  const events = [];
-  projects.forEach((p) => {
-    (p.payments ?? []).slice(-1).forEach((pay) => {
-      events.push({
-        id: `seed-pay-${p.id}-${pay.date}`,
-        type: 'payment',
-        title: 'Payment update posted',
-        detail: `${pay.milestone} — ${p.title}`,
-        date: pay.date,
-        projectId: p.id,
-      });
-    });
-    (p.proofs ?? []).slice(-1).forEach((proof) => {
-      events.push({
-        id: `seed-proof-${p.id}-${proof.uploadedAt}`,
-        type: 'proof',
-        title: 'Proof uploaded',
-        detail: `${proof.title} — ${p.title}`,
-        date: proof.uploadedAt,
-        projectId: p.id,
-      });
-    });
-  });
-  return events.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8);
-}
+const initialData = getInitialAppData();
 
 export function DataProvider({ children }) {
   const [data, setData] = useState(initialData);
@@ -64,7 +50,7 @@ export function DataProvider({ children }) {
     dataRef.current = data;
   }, [data]);
 
-  const [adminActivity, setAdminActivity] = useState(() => buildSeedAdminActivity(initialData.projects));
+  const [adminActivity, setAdminActivity] = useState([]);
   const [dataLoading, setDataLoading] = useState(isFirebaseConfigured());
   const firebaseEnabled = isFirebaseConfigured();
 
@@ -87,12 +73,19 @@ export function DataProvider({ children }) {
 
     (async () => {
       try {
-        const [wards, projects] = await Promise.all([getWards(), getProjects()]);
+        const [wards, projects, activityLogs] = await Promise.all([
+          getWards(),
+          getProjects(),
+          fetchActivityLogs(),
+        ]);
         if (!cancelled) {
           setData((prev) => ({ ...prev, wards, projects }));
+          if (activityLogs.length > 0) {
+            setAdminActivity(activityLogs);
+          }
         }
       } catch (error) {
-        console.warn('[WardWatch] Remote data load failed; using seed fallback.', error);
+        console.warn('[WardWatch] Remote data load failed; keeping current local data.', error);
       } finally {
         if (!cancelled) setDataLoading(false);
       }
@@ -102,56 +95,80 @@ export function DataProvider({ children }) {
   }, [firebaseEnabled]);
 
   const logActivity = useCallback((entry) => {
-    setAdminActivity((prev) => [
-      { ...entry, id: nextId('act'), date: entry.date || new Date().toISOString().split('T')[0] },
-      ...prev,
-    ]);
+    const record = buildActivityEntry(entry);
+    setAdminActivity((prev) => [record, ...prev]);
+    persistActivityLog(record).catch((error) => {
+      console.warn('[WardWatch] Activity log persist failed.', error);
+    });
+    return record;
   }, []);
 
-  const addProject = useCallback(async (form) => {
-    const result = await addProjectService(form);
+  const addProject = useCallback(async (form, creator = {}) => {
+    const result = await addProjectService({
+      ...form,
+      wardNo: form.wardNo,
+      published: true,
+      publicVisible: true,
+      createdByUid: creator.uid ?? null,
+      createdByName: creator.fullName ?? null,
+    });
     setData((prev) => ({ ...prev, projects: [result.project, ...prev.projects] }));
-    logActivity({ type: 'project', title: 'Project added', detail: result.project.title, projectId: result.id });
+    logActivity({
+      type: 'project',
+      title: 'Project published',
+      detail: result.project.title,
+      projectId: result.id,
+      wardNo: result.project.wardNo,
+      userId: creator.uid ?? null,
+    });
     return result;
   }, [logActivity]);
 
-  const addUpdate = useCallback(({ projectId, title, description, progressAfter, status, remarks, date }) => {
+  const addUpdate = useCallback(({ projectId, title, description, progressAfter, status, remarks, date, uploadedByUid }) => {
     const progressPercent = Number(progressAfter);
     const updateDate = date || new Date().toISOString().split('T')[0];
-    const proofTitle = title
-      || (remarks ? `Progress update — ${remarks.slice(0, 50)}` : `Progress updated to ${progressPercent}%`);
-    const nextStatus = status
-      || (progressPercent >= 100 ? 'Completed' : undefined);
+    const nextStatus = status || (progressPercent >= 100 ? 'Completed' : undefined);
+    let wardNo = null;
 
     setData((prev) => ({
       ...prev,
       projects: prev.projects.map((p) => {
         if (p.id !== projectId) return p;
+        wardNo = p.wardNo;
         const resolvedStatus = nextStatus
           ?? (progressPercent >= 100 ? 'Completed' : p.status === 'Planned' ? 'Ongoing' : p.status);
         return {
           ...p,
           progressPercent,
           status: resolvedStatus,
-          proofs: [
-            ...(p.proofs ?? []),
-            {
-              type: 'during',
-              title: proofTitle,
-              url: `https://placehold.co/800x450/2563eb/white?text=${encodeURIComponent(proofTitle.slice(0, 20))}`,
-              uploadedAt: updateDate,
-              remarks: remarks || description || '',
-            },
-          ],
+          updatedAt: new Date().toISOString(),
         };
       }),
     }));
-    logActivity({ type: 'proof', title: 'Progress update posted', detail: proofTitle, projectId, date: updateDate });
+
+    updateProjectProgress(projectId, {
+      progressPercent,
+      status: nextStatus,
+    }).catch(() => {});
+
+    logActivity({
+      type: 'progress',
+      title: 'Progress update posted',
+      detail: title || `${progressPercent}% — ${remarks || description || 'Progress updated'}`,
+      projectId,
+      wardNo,
+      userId: uploadedByUid ?? null,
+      date: updateDate,
+    });
     return { label: 'Progress Update', detail: `${progressPercent}% — ${nextStatus || 'status updated'}` };
   }, [logActivity]);
 
-  const addPayment = useCallback(async (payload) => {
-    const result = await addPaymentService(payload.projectId, payload);
+  const addPayment = useCallback(async (payload, actor = {}) => {
+    const result = await addPaymentService(payload.projectId, {
+      ...payload,
+      uploadedByUid: actor.uid ?? payload.uploadedByUid ?? null,
+      wardNo: payload.wardNo,
+    });
     setData((prev) => ({
       ...prev,
       projects: prev.projects.map((p) => (p.id === result.projectId ? result.project : p)),
@@ -161,13 +178,19 @@ export function DataProvider({ children }) {
       title: 'Payment update posted',
       detail: payload.milestone,
       projectId: payload.projectId,
+      wardNo: result.project.wardNo,
+      userId: actor.uid ?? null,
       date: result.payment.date,
     });
     return { label: 'Payment Release', detail: payload.milestone };
   }, [logActivity]);
 
-  const addProof = useCallback(async (payload) => {
-    const result = await addProofService(payload.projectId, payload);
+  const addProof = useCallback(async (payload, actor = {}) => {
+    const result = await addProofService(payload.projectId, {
+      ...payload,
+      uploadedByUid: actor.uid ?? payload.uploadedByUid ?? null,
+      wardNo: payload.wardNo,
+    });
     setData((prev) => ({
       ...prev,
       projects: prev.projects.map((p) => (p.id === result.projectId ? result.project : p)),
@@ -177,55 +200,71 @@ export function DataProvider({ children }) {
       title: 'Proof uploaded',
       detail: payload.title,
       projectId: payload.projectId,
+      wardNo: result.project.wardNo,
+      userId: actor.uid ?? null,
       date: result.proof.uploadedAt,
     });
     return { label: 'Proof Upload', detail: payload.title };
   }, [logActivity]);
 
-  const completeProject = useCallback(({ projectId, finalStatus, remarks, proofFile, proofUrl, date }) => {
+  const completeProject = useCallback(({ projectId, finalStatus, remarks, proofFile, proofUrl, date, uploadedByUid }) => {
     const completionDate = date || new Date().toISOString().split('T')[0];
-    const proofTitle = `Project completion — ${remarks.slice(0, 40)}`;
-    const file = proofFile || (proofUrl ? { fileUrl: proofUrl } : null);
+    let wardNo = null;
 
     setData((prev) => ({
       ...prev,
       projects: prev.projects.map((p) => {
         if (p.id !== projectId) return p;
-        const proofs = [
-          ...(p.proofs ?? []),
-          {
-            id: `proof-${Date.now()}`,
-            type: 'after',
-            title: proofTitle,
-            fileUrl: file?.fileUrl || `https://placehold.co/800x450/059669/white?text=${encodeURIComponent('Completed')}`,
-            fileName: file?.fileName || null,
-            fileType: file?.fileType || null,
-            fileSize: file?.fileSize ?? null,
-            url: file?.fileUrl || `https://placehold.co/800x450/059669/white?text=${encodeURIComponent('Completed')}`,
-            uploadedAt: completionDate,
-            remarks,
-          },
-        ];
+        wardNo = p.wardNo;
+        const file = proofFile || (proofUrl ? { fileUrl: proofUrl } : null);
+        const proofs = file?.fileUrl
+          ? [
+            ...(p.proofs ?? []),
+            {
+              id: `proof-${Date.now()}`,
+              type: 'after',
+              title: `Project completion — ${remarks.slice(0, 40)}`,
+              fileUrl: file.fileUrl,
+              fileName: file.fileName || null,
+              fileType: file.fileType || null,
+              fileSize: file.fileSize ?? null,
+              url: file.fileUrl,
+              uploadedAt: completionDate,
+              uploadedBy: uploadedByUid || null,
+              remarks,
+            },
+          ]
+          : (p.proofs ?? []);
+
         return {
           ...p,
           progressPercent: 100,
           status: finalStatus || 'Completed',
           proofs,
+          updatedAt: new Date().toISOString(),
         };
       }),
     }));
+
+    updateProjectProgress(projectId, {
+      progressPercent: 100,
+      status: finalStatus || 'Completed',
+    }).catch(() => {});
+
     logActivity({
       type: 'project',
       title: 'Project marked complete',
       detail: remarks,
       projectId,
+      wardNo,
+      userId: uploadedByUid ?? null,
       date: completionDate,
     });
     return { label: 'Completion Update', detail: finalStatus || 'Completed' };
   }, [logActivity]);
 
   const addComplaint = useCallback(async (form) => {
-    const result = await addComplaintService(form);
+    const result = await addComplaintService(form, dataRef.current.projects);
 
     setData((prev) => {
       if (!form.projectId) return prev;
@@ -244,6 +283,7 @@ export function DataProvider({ children }) {
       title: 'Citizen feedback submitted',
       detail: result.complaint.category,
       projectId: form.projectId,
+      wardNo: result.complaint.wardNo,
       date: result.complaint.createdAt,
     });
 
@@ -293,22 +333,52 @@ export function DataProvider({ children }) {
       }));
     }
 
+    const project = projects.find((p) => p.id === projectId);
     logActivity({
       type: 'complaint',
-      title: 'Complaint status changed',
+      title: 'Complaint response posted',
       detail: `Marked as ${status}`,
       projectId,
+      wardNo: project?.wardNo ?? null,
     });
   }, [logActivity]);
 
+  const applyFreshSeed = useCallback((freshSeed) => {
+    setData(freshSeed);
+    setAdminActivity([]);
+  }, []);
+
+  const devClearLocalDemoData = useCallback(async () => {
+    const cleared = clearLocalFallbackData();
+    applyFreshSeed(getFreshItahariSeed());
+    return cleared;
+  }, [applyFreshSeed]);
+
+  const devSeedFreshItahariData = useCallback(async () => {
+    const result = await seedFreshItahariDemo();
+    applyFreshSeed(result.freshSeed);
+    return result;
+  }, [applyFreshSeed]);
+
+  const devResetAndSeedFreshData = useCallback(async () => {
+    const reset = await resetDemoData();
+    const seed = await seedFreshItahariDemo();
+    applyFreshSeed(seed.freshSeed);
+    return { reset, seed };
+  }, [applyFreshSeed]);
+
+  const devClearFirestoreOnly = useCallback(async () => clearFirestoreData(), []);
+
   const value = useMemo(() => {
     const { municipality, wards, projects } = data;
+    const publicProjects = getPublicProjects(projects);
     return {
       municipality,
       wards,
       projects,
-      payments: getAllPayments(projects),
-      complaints: getAllComplaints(projects),
+      publicProjects,
+      payments: getAllPayments(publicProjects),
+      complaints: getAllComplaints(publicProjects),
       adminActivity,
       demoAdminWard: DEMO_ADMIN_WARD,
       firebaseEnabled,
@@ -320,6 +390,11 @@ export function DataProvider({ children }) {
       completeProject,
       addComplaint,
       updateComplaintStatus,
+      isDevResetEnabled,
+      devClearLocalDemoData,
+      devSeedFreshItahariData,
+      devResetAndSeedFreshData,
+      devClearFirestoreOnly,
     };
   }, [
     data,
@@ -333,6 +408,10 @@ export function DataProvider({ children }) {
     completeProject,
     addComplaint,
     updateComplaintStatus,
+    devClearLocalDemoData,
+    devSeedFreshItahariData,
+    devResetAndSeedFreshData,
+    devClearFirestoreOnly,
   ]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

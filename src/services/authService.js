@@ -6,13 +6,31 @@ import {
   onAuthStateChanged,
   updateProfile as firebaseUpdateProfile,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { getFirebaseApp, getDb, isFirebaseConfigured, COLLECTIONS } from '../firebase/config';
+import {
+  wardAdminAccounts,
+  WARD_LOGIN_ALIAS_MAP,
+  findWardAdminAccountByEmail,
+  isDemoAccountEmail,
+} from '../data/wardAdminAccounts';
+import {
+  ROLES,
+  canAccessAdmin,
+  canEditProject,
+  canManageWard,
+  canReviewComplaint,
+  filterProjectsForAdmin,
+  filterComplaintsForAdmin,
+  filterActivityForAdmin,
+  getUserHomeRoute,
+  getAdminAccessBlockReason,
+  isApprovedWardAdmin as isApprovedWardAdminPerm,
+  isWardAdminProfile,
+  normalizeProfileRole,
+} from '../utils/permissions';
 
-export const ROLES = {
-  PUBLIC: 'public',
-  WARD_ADMIN: 'ward_admin',
-};
+export { ROLES };
 
 /** Hackathon demo — in production, ward admins require municipality approval before access. */
 export const MUNICIPALITY_NAME = 'Itahari Sub-Metropolitan City';
@@ -23,6 +41,7 @@ export const DEMO_ACCOUNTS = {
     password: 'demo123',
     profile: {
       fullName: 'Demo Citizen',
+      username: 'democitizen',
       role: ROLES.PUBLIC,
       wardNo: null,
       phone: '9800000001',
@@ -30,27 +49,19 @@ export const DEMO_ACCOUNTS = {
       municipality: MUNICIPALITY_NAME,
     },
   },
-  admin: {
-    email: 'admin@itahari.demo',
-    password: 'demo123',
-    profile: {
-      fullName: 'Ward IT Admin',
-      role: ROLES.WARD_ADMIN,
-      wardNo: 1,
-      phone: '9800000002',
-      positionTitle: 'Ward IT Officer',
-      municipality: MUNICIPALITY_NAME,
-      approved: true,
-      status: 'approved',
-    },
-  },
 };
 
 const LOCAL_USERS_KEY = 'wardwatch_local_users';
 const LOCAL_SESSION_KEY = 'wardwatch_local_session';
 
+const USERNAME_PATTERN = /^[a-z0-9_]{3,}$/;
+
 function normalizeEmail(email) {
   return email.trim().toLowerCase();
+}
+
+export function normalizeUsername(username) {
+  return username?.trim().toLowerCase() ?? '';
 }
 
 function generateUid() {
@@ -79,6 +90,14 @@ function buildProfile(uid, data) {
     photoURL: data.photoURL || null,
   };
 
+  if (data.username) {
+    profile.username = normalizeUsername(data.username);
+  }
+
+  if (data.loginAlias) {
+    profile.loginAlias = data.loginAlias.trim().toLowerCase();
+  }
+
   if (role === ROLES.WARD_ADMIN) {
     profile.positionTitle = data.positionTitle?.trim() || null;
     profile.status = data.status || (profile.approved ? 'approved' : 'pending');
@@ -89,7 +108,9 @@ function buildProfile(uid, data) {
 
 function normalizeStoredProfile(uid, data) {
   if (!data) return null;
-  return buildProfile(uid, data);
+  const profile = buildProfile(uid, data);
+  profile.role = normalizeProfileRole(profile);
+  return profile;
 }
 
 function getFirebaseAuth() {
@@ -129,22 +150,54 @@ function writeLocalSession(uid) {
   }
 }
 
+function upsertLocalDemoUser(next, { email, password, profileFields }) {
+  const normalized = normalizeEmail(email);
+  const idx = next.findIndex((u) => normalizeEmail(u.email) === normalized);
+  const uid = idx >= 0 ? next[idx].uid : generateUid();
+  const user = {
+    uid,
+    email: normalized,
+    password,
+    ...buildProfile(uid, { email: normalized, ...profileFields }),
+  };
+
+  if (idx >= 0) {
+    next[idx] = user;
+  } else {
+    next.push(user);
+  }
+
+  return true;
+}
+
 function seedLocalDemoUsers() {
   const users = readLocalUsers();
   const next = [...users];
   let changed = false;
 
   Object.values(DEMO_ACCOUNTS).forEach(({ email, password, profile }) => {
-    const normalized = normalizeEmail(email);
-    const existing = next.find((u) => normalizeEmail(u.email) === normalized);
-    if (!existing) {
-      const uid = generateUid();
-      next.push({
-        uid,
-        email: normalized,
-        password,
-        ...buildProfile(uid, { email: normalized, ...profile }),
-      });
+    if (upsertLocalDemoUser(next, { email, password, profileFields: profile })) {
+      changed = true;
+    }
+  });
+
+  wardAdminAccounts.forEach((account) => {
+    if (upsertLocalDemoUser(next, {
+      email: account.firebaseEmail,
+      password: account.password,
+      profileFields: {
+        fullName: account.fullName,
+        email: account.firebaseEmail,
+        loginAlias: account.loginAlias,
+        role: ROLES.WARD_ADMIN,
+        wardNo: account.wardNo,
+        phone: account.phone,
+        positionTitle: account.positionTitle,
+        municipality: MUNICIPALITY_NAME,
+        approved: account.approved,
+        status: account.status,
+      },
+    })) {
       changed = true;
     }
   });
@@ -161,6 +214,12 @@ function findLocalUserByEmail(email) {
   return users.find((u) => normalizeEmail(u.email) === normalizeEmail(email)) ?? null;
 }
 
+function findLocalUserByUsername(username) {
+  const users = seedLocalDemoUsers();
+  const normalized = normalizeUsername(username);
+  return users.find((u) => u.username === normalized) ?? null;
+}
+
 function findLocalUserByUid(uid) {
   const users = seedLocalDemoUsers();
   return users.find((u) => u.uid === uid) ?? null;
@@ -173,6 +232,77 @@ function stripPassword(user) {
   return normalizeStoredProfile(copy.uid, copy);
 }
 
+async function findEmailByUsername(username) {
+  const normalized = normalizeUsername(username);
+  if (!normalized) return null;
+
+  if (isFirebaseConfigured()) {
+    const db = getDb();
+    if (!db) return null;
+
+    const q = query(
+      collection(db, COLLECTIONS.users),
+      where('username', '==', normalized),
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    return normalizeEmail(snap.docs[0].data().email || '');
+  }
+
+  const user = findLocalUserByUsername(normalized);
+  return user ? normalizeEmail(user.email) : null;
+}
+
+/**
+ * Resolve a login identifier (email, username, or ward alias) to a Firebase email.
+ */
+export async function resolveLoginIdentifier(identifier) {
+  const trimmed = identifier?.trim();
+  if (!trimmed) {
+    const err = new Error('Login ID is required.');
+    err.code = 'auth/invalid-identifier';
+    throw err;
+  }
+
+  const lower = trimmed.toLowerCase();
+
+  if (WARD_LOGIN_ALIAS_MAP[lower]) {
+    return WARD_LOGIN_ALIAS_MAP[lower];
+  }
+
+  if (lower.includes('@')) {
+    return normalizeEmail(lower);
+  }
+
+  const email = await findEmailByUsername(lower);
+  if (!email) {
+    const err = new Error('Username not found.');
+    err.code = 'auth/username-not-found';
+    throw err;
+  }
+
+  return email;
+}
+
+export async function isUsernameTaken(username) {
+  const normalized = normalizeUsername(username);
+  if (!normalized) return false;
+
+  if (isFirebaseConfigured()) {
+    const db = getDb();
+    if (!db) return false;
+
+    const q = query(
+      collection(db, COLLECTIONS.users),
+      where('username', '==', normalized),
+    );
+    const snap = await getDocs(q);
+    return !snap.empty;
+  }
+
+  return Boolean(findLocalUserByUsername(normalized));
+}
+
 async function localRegister(payload) {
   seedLocalDemoUsers();
 
@@ -182,12 +312,22 @@ async function localRegister(payload) {
     throw err;
   }
 
-  const uid = generateUid();
   const isWardAdmin = payload.role === ROLES.WARD_ADMIN;
+
+  if (!isWardAdmin && payload.username && findLocalUserByUsername(payload.username)) {
+    const err = new Error('Username already taken. Please choose another username.');
+    err.code = 'auth/username-already-in-use';
+    throw err;
+  }
+
+  const uid = generateUid();
+  const loginAlias = isWardAdmin && payload.wardNo ? `ward${payload.wardNo}@itahari` : null;
 
   const profile = buildProfile(uid, {
     fullName: payload.fullName,
     email: payload.email,
+    username: isWardAdmin ? null : payload.username,
+    loginAlias,
     role: isWardAdmin ? ROLES.WARD_ADMIN : ROLES.PUBLIC,
     wardNo: isWardAdmin ? payload.wardNo : payload.wardNo || null,
     phone: payload.phone,
@@ -210,17 +350,38 @@ async function localLogin(email, password) {
   const user = findLocalUserByEmail(email);
 
   if (!user || user.password !== password) {
-    const err = new Error('Invalid email or password.');
+    const err = new Error('Invalid login ID or password.');
     err.code = 'auth/invalid-credential';
     throw err;
   }
 
+  const wardTemplate = findWardAdminAccountByEmail(email);
+  const profile = stripPassword(user);
+
+  if (wardTemplate && profile?.role !== ROLES.WARD_ADMIN) {
+    const err = new Error('Ward admin profile not found.');
+    err.code = 'auth/ward-admin-not-found';
+    throw err;
+  }
+
+  if (profile?.role === ROLES.WARD_ADMIN && !profile.wardNo) {
+    const err = new Error('Your admin profile is incomplete.');
+    err.code = 'auth/incomplete-admin-profile';
+    throw err;
+  }
+
   writeLocalSession(user.uid);
-  return stripPassword(user);
+  return profile;
 }
 
 async function localLogout() {
   writeLocalSession(null);
+}
+
+/** Clear all locally cached auth users and session (dev reset). */
+export function clearLocalAuthStorage() {
+  writeLocalSession(null);
+  localStorage.removeItem(LOCAL_USERS_KEY);
 }
 
 async function localGetCurrentProfile() {
@@ -269,9 +430,13 @@ async function firebaseRegister(payload) {
   await firebaseUpdateProfile(cred.user, { displayName: payload.fullName.trim() });
 
   const isWardAdmin = payload.role === ROLES.WARD_ADMIN;
+  const loginAlias = isWardAdmin && payload.wardNo ? `ward${payload.wardNo}@itahari` : null;
+
   const profile = buildProfile(cred.user.uid, {
     fullName: payload.fullName,
     email: payload.email,
+    username: isWardAdmin ? null : payload.username,
+    loginAlias,
     role: isWardAdmin ? ROLES.WARD_ADMIN : ROLES.PUBLIC,
     wardNo: isWardAdmin ? payload.wardNo : payload.wardNo || null,
     phone: payload.phone,
@@ -290,21 +455,77 @@ async function firebaseLogin(email, password) {
   const auth = getFirebaseAuth();
   if (!auth) throw new Error('Firebase Auth is not configured');
 
-  const cred = await signInWithEmailAndPassword(auth, normalizeEmail(email), password);
+  const normalizedEmail = normalizeEmail(email);
+  const wardTemplate = findWardAdminAccountByEmail(normalizedEmail);
+
+  let cred;
+  try {
+    cred = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+  } catch {
+    const canAutoProvision = wardTemplate && password === wardTemplate.password;
+
+    if (canAutoProvision) {
+      try {
+        cred = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
+        await firebaseUpdateProfile(cred.user, { displayName: wardTemplate.fullName });
+      } catch (createErr) {
+        if (createErr.code === 'auth/email-already-in-use') {
+          const err = new Error('Invalid login ID or password.');
+          err.code = 'auth/invalid-credential';
+          throw err;
+        }
+        throw createErr;
+      }
+    } else {
+      const err = new Error('Invalid login ID or password.');
+      err.code = 'auth/invalid-credential';
+      throw err;
+    }
+  }
+
   let profile = await firebaseFetchProfile(cred.user.uid);
 
   if (!profile) {
-    profile = buildProfile(cred.user.uid, {
-      fullName: cred.user.displayName || cred.user.email?.split('@')[0] || 'User',
-      email: cred.user.email,
-      role: ROLES.PUBLIC,
-      wardNo: null,
-      phone: null,
-      municipality: MUNICIPALITY_NAME,
-      approved: true,
-      photoURL: cred.user.photoURL,
-    });
-    await firebaseSaveProfile(cred.user.uid, profile);
+    if (wardTemplate) {
+      profile = buildProfile(cred.user.uid, {
+        fullName: wardTemplate.fullName,
+        email: wardTemplate.firebaseEmail,
+        loginAlias: wardTemplate.loginAlias,
+        role: ROLES.WARD_ADMIN,
+        wardNo: wardTemplate.wardNo,
+        phone: wardTemplate.phone,
+        positionTitle: wardTemplate.positionTitle,
+        municipality: MUNICIPALITY_NAME,
+        approved: true,
+        status: 'approved',
+        photoURL: cred.user.photoURL,
+      });
+      await firebaseSaveProfile(cred.user.uid, profile);
+    } else {
+      profile = buildProfile(cred.user.uid, {
+        fullName: cred.user.displayName || cred.user.email?.split('@')[0] || 'User',
+        email: cred.user.email,
+        role: ROLES.PUBLIC,
+        wardNo: null,
+        phone: null,
+        municipality: MUNICIPALITY_NAME,
+        approved: true,
+        photoURL: cred.user.photoURL,
+      });
+      await firebaseSaveProfile(cred.user.uid, profile);
+    }
+  }
+
+  if (wardTemplate && profile.role !== ROLES.WARD_ADMIN) {
+    const err = new Error('Ward admin profile not found.');
+    err.code = 'auth/ward-admin-not-found';
+    throw err;
+  }
+
+  if (profile.role === ROLES.WARD_ADMIN && !profile.wardNo) {
+    const err = new Error('Your admin profile is incomplete.');
+    err.code = 'auth/incomplete-admin-profile';
+    throw err;
   }
 
   return profile;
@@ -324,6 +545,11 @@ function firebaseSubscribe(callback) {
 
   return onAuthStateChanged(auth, async (user) => {
     if (!user) {
+      const localProfile = await localGetCurrentProfile();
+      if (localProfile && isDemoAccountEmail(localProfile.email)) {
+        callback(localProfile);
+        return;
+      }
       callback(null);
       return;
     }
@@ -358,13 +584,22 @@ export function isAuthConfigured() {
 }
 
 export function validateRegistration({
-  fullName, email, password, confirmPassword, role, wardNo, phone,
+  fullName, username, email, password, confirmPassword, role, wardNo, phone,
 }) {
   const errors = {};
 
   if (!fullName?.trim()) errors.fullName = 'Full name is required';
   if (!email?.trim()) errors.email = 'Email is required';
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errors.email = 'Enter a valid email';
+
+  if (role === ROLES.PUBLIC) {
+    const normalizedUsername = normalizeUsername(username);
+    if (!normalizedUsername) {
+      errors.username = 'Username is required';
+    } else if (!USERNAME_PATTERN.test(normalizedUsername)) {
+      errors.username = 'Username must be 3+ characters: lowercase letters, numbers, and underscore only';
+    }
+  }
 
   if (!password) errors.password = 'Password is required';
   else if (password.length < 6) errors.password = 'Password must be at least 6 characters';
@@ -389,11 +624,22 @@ export function validateRegistration({
 export async function registerUser(payload) {
   const isWardAdmin = payload.role === ROLES.WARD_ADMIN;
 
+  if (!isWardAdmin && payload.username) {
+    const taken = await isUsernameTaken(payload.username);
+    if (taken) {
+      const err = new Error('Username already taken. Please choose another username.');
+      err.code = 'auth/username-already-in-use';
+      throw err;
+    }
+  }
+
   const safePayload = {
     fullName: payload.fullName,
+    username: isWardAdmin ? null : normalizeUsername(payload.username),
     email: payload.email,
     password: payload.password,
     phone: payload.phone,
+    // Citizens always register as public; ward_admin only when explicitly registering as IT/Admin.
     role: isWardAdmin ? ROLES.WARD_ADMIN : ROLES.PUBLIC,
     wardNo: isWardAdmin ? payload.wardNo : payload.wardNo || null,
     positionTitle: isWardAdmin ? payload.positionTitle : null,
@@ -405,18 +651,27 @@ export async function registerUser(payload) {
   return localRegister(safePayload);
 }
 
-export async function loginUser(email, password) {
+export async function loginUser(identifier, password) {
+  const email = await resolveLoginIdentifier(identifier);
+
   if (isFirebaseConfigured()) {
-    return firebaseLogin(email, password);
+    try {
+      return await firebaseLogin(email, password);
+    } catch (err) {
+      if (err.code === 'auth/invalid-credential' && isDemoAccountEmail(email)) {
+        return localLogin(email, password);
+      }
+      throw err;
+    }
   }
   return localLogin(email, password);
 }
 
 export async function logoutUser() {
+  await localLogout();
   if (isFirebaseConfigured()) {
     return firebaseLogout();
   }
-  return localLogout();
 }
 
 export async function getCurrentProfile() {
@@ -437,76 +692,48 @@ export function subscribeToAuth(callback) {
 }
 
 export function isWardAdmin(profile) {
-  return profile?.role === ROLES.WARD_ADMIN;
+  return isWardAdminProfile(profile);
 }
 
 export function isApprovedWardAdmin(profile) {
-  return profile?.role === ROLES.WARD_ADMIN
-    && profile?.approved === true
-    && profile?.wardNo != null;
+  return isApprovedWardAdminPerm(profile);
 }
 
 export function canAccessAdminPortal(profile) {
-  return isApprovedWardAdmin(profile);
+  return canAccessAdmin(profile);
 }
 
 export function validatePostLogin(profile) {
-  if (profile?.role === ROLES.WARD_ADMIN) {
-    if (!profile.wardNo) {
-      return {
-        ok: false,
-        error: 'Your ward admin profile is incomplete. Please select or contact support.',
-      };
-    }
-    if (profile.approved !== true) {
-      return {
-        ok: false,
-        error: 'Your ward admin account is not yet approved.',
-      };
-    }
-    return { ok: true, path: '/admin' };
+  const blockReason = getAdminAccessBlockReason(profile);
+  if (blockReason && isWardAdminProfile(profile) && !canAccessAdmin(profile)) {
+    return { ok: true, path: '/dashboard', adminBlocked: blockReason };
   }
-
-  return { ok: true, path: '/dashboard' };
+  return { ok: true, path: getUserHomeRoute(profile) };
 }
 
 export function getPostLoginPath(profile) {
-  return validatePostLogin(profile).path || '/dashboard';
+  return getUserHomeRoute(profile);
 }
 
 export function getRegistrationSuccessMessage(profile) {
-  if (profile?.role === ROLES.WARD_ADMIN) {
+  if (isWardAdminProfile(profile)) {
     return `Ward IT/Admin account created successfully. You are now managing Ward ${profile.wardNo} records.`;
   }
   return 'Citizen account created successfully.';
 }
 
 export function assertWardProjectAccess(profile, project) {
-  if (!isApprovedWardAdmin(profile)) return false;
-  return project?.wardNo === profile.wardNo;
+  return canEditProject(profile, project);
 }
 
-export function filterProjectsForAdmin(projects, profile) {
-  if (!isApprovedWardAdmin(profile) || !profile.wardNo) return [];
-  return projects.filter((p) => p.wardNo === profile.wardNo);
-}
-
-export function filterComplaintsForAdmin(projects, profile) {
-  const wardProjects = filterProjectsForAdmin(projects, profile);
-  const wardProjectIds = new Set(wardProjects.map((p) => p.id));
-  return projects.flatMap((p) =>
-    (p.complaints ?? [])
-      .filter(() => wardProjectIds.has(p.id))
-      .map((c) => ({
-        ...c,
-        projectId: p.id,
-        projectTitle: p.title,
-        wardNo: p.wardNo,
-      })),
-  );
-}
-
-export function filterActivityForAdmin(activity, projects, profile) {
-  const wardProjectIds = new Set(filterProjectsForAdmin(projects, profile).map((p) => p.id));
-  return activity.filter((a) => !a.projectId || wardProjectIds.has(a.projectId));
-}
+export {
+  canAccessAdmin,
+  canManageWard,
+  canEditProject,
+  canReviewComplaint,
+  getUserHomeRoute,
+  getAdminAccessBlockReason,
+  filterProjectsForAdmin,
+  filterComplaintsForAdmin,
+  filterActivityForAdmin,
+};

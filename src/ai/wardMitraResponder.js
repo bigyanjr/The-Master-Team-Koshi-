@@ -1,4 +1,4 @@
-import { answerCitizenQuery } from '../utils/citizenQueryEngine';
+import { answerCitizenQuery, NO_PUBLIC_PROJECTS_MESSAGE } from '../utils/citizenQueryEngine';
 import {
   buildGreeting,
   IDENTITY_ANSWER,
@@ -53,6 +53,9 @@ export function respondAsWardMitra({ question, userProfile = null, projects, war
     }
 
     case 'project_query': {
+      if (!projects?.length) {
+        return { answer: NO_PUBLIC_PROJECTS_MESSAGE, intent, source: 'fallback' };
+      }
       const answer = answerCitizenQuery(trimmed, projects, wards);
       return { answer, intent, source: 'project_data' };
     }

@@ -15,7 +15,7 @@ export const wards = [
   {
     id: 'ward-1',
     number: 1,
-    name: 'Market Area & Road Improvement',
+    name: 'Ward 1',
     councillor: 'Ram Prasad Karki',
     population: 19200,
     allocatedBudget: 52000000,
@@ -23,7 +23,7 @@ export const wards = [
   {
     id: 'ward-2',
     number: 2,
-    name: 'Drainage and Flood Control',
+    name: 'Ward 2',
     councillor: 'Sunita Chaudhary',
     population: 17800,
     allocatedBudget: 48000000,
@@ -31,7 +31,7 @@ export const wards = [
   {
     id: 'ward-3',
     number: 3,
-    name: 'School and Community Infrastructure',
+    name: 'Ward 3',
     councillor: 'Rajesh Yadav',
     population: 20100,
     allocatedBudget: 61000000,
@@ -39,7 +39,7 @@ export const wards = [
   {
     id: 'ward-4',
     number: 4,
-    name: 'Street Light and Public Safety',
+    name: 'Ward 4',
     councillor: 'Anita Gurung',
     population: 18500,
     allocatedBudget: 55000000,
@@ -47,7 +47,7 @@ export const wards = [
   {
     id: 'ward-5',
     number: 5,
-    name: 'Health Post and Drinking Water',
+    name: 'Ward 5',
     councillor: 'Bikash Thapa',
     population: 19400,
     allocatedBudget: 69000000,

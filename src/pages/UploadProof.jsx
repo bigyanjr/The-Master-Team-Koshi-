@@ -15,7 +15,7 @@ const PROOF_TYPES = [
   { value: 'document', label: 'Document' },
 ];
 
-import { filterProjectsForAdmin, assertWardProjectAccess } from '../services/authService';
+import { filterProjectsForAdmin, canEditProject } from '../utils/permissions';
 
 export default function UploadProof() {
   const { projects, addProof } = useData();
@@ -36,7 +36,7 @@ export default function UploadProof() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const project = projects.find((p) => p.id === form.projectId);
-    if (!assertWardProjectAccess(profile, project)) {
+    if (!canEditProject(profile, project)) {
       setAuthError('You are not authorised to manage this ward record.');
       return;
     }
@@ -51,7 +51,7 @@ export default function UploadProof() {
       ...form,
       ...proofFile,
       uploadedBy: profile?.uid || null,
-    });
+    }, { uid: profile?.uid });
     setSuccess(true);
     setTimeout(() => navigate('/admin'), 1500);
   };

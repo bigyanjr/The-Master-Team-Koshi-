@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import Card, { CardHeader } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { DataResponsibilityNotice } from '../components/admin/AdminActivityFeed';
-import { filterProjectsForAdmin, assertWardProjectAccess } from '../services/authService';
+import { filterProjectsForAdmin, canEditProject } from '../utils/permissions';
 
 export default function AddPayment() {
   const { projects, addPayment } = useData();
@@ -27,12 +27,12 @@ export default function AddPayment() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const project = projects.find((p) => p.id === form.projectId);
-    if (!assertWardProjectAccess(profile, project)) {
+    if (!canEditProject(profile, project)) {
       setAuthError('You are not authorised to manage this ward record.');
       return;
     }
     setAuthError('');
-    await addPayment(form);
+    await addPayment(form, { uid: profile?.uid });
     setSuccess(true);
     setTimeout(() => navigate('/admin'), 1500);
   };

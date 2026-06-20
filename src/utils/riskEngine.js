@@ -7,7 +7,7 @@ import {
   detectCorruptionRisks,
   getCorruptionRiskScore,
   getCorruptionRiskLevel,
-  generateRiskExplanation,
+  generateRiskExplanation as generateRiskExplanationFromDetector,
 } from './corruptionRiskDetector';
 
 function payments(project) {
@@ -36,19 +36,54 @@ export function getProgressPercent(project) {
   return project.progressPercent ?? 0;
 }
 
+export function syncProjectTotals(project) {
+  const paidAmount = getTotalPaid(project);
+  return {
+    ...project,
+    paidAmount,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export const INSUFFICIENT_RISK_DATA_LABEL = 'Not enough public data yet';
+
+export function hasEnoughRiskData(project) {
+  if (!project) return false;
+  const hasPayments = payments(project).length > 0;
+  const hasProofs = proofs(project).length > 0;
+  const hasComplaints = complaints(project).length > 0;
+  const hasProgress = (project.progressPercent ?? 0) > 0;
+  return hasPayments || hasProofs || hasComplaints || hasProgress;
+}
+
 export function getRiskFlags(project, allProjects = []) {
+  if (!hasEnoughRiskData(project)) return [];
   return detectCorruptionRisks(project, allProjects);
 }
 
 export function calculateTrustScore(project, allProjects = []) {
+  if (!hasEnoughRiskData(project)) return null;
   return getCorruptionRiskScore(project, allProjects);
 }
 
 export function getRiskLevel(project, allProjects = []) {
+  if (!hasEnoughRiskData(project)) {
+    return {
+      label: INSUFFICIENT_RISK_DATA_LABEL,
+      color: 'slate',
+      score: null,
+      insufficientData: true,
+    };
+  }
   return getCorruptionRiskLevel(project, allProjects);
 }
 
-export { generateRiskExplanation };
+export function generateRiskExplanation(project, allProjects = []) {
+  if (!hasEnoughRiskData(project)) {
+    return 'Not enough public data yet. Risk assessment will appear after ward admins publish payments, proof photos, or progress updates.';
+  }
+  return generateRiskExplanationFromDetector(project, allProjects);
+}
 
 export function getTrustLabel(score) {
   if (score >= 80) return { label: 'Low Risk', color: 'emerald' };
@@ -87,9 +122,14 @@ export function aggregateWardStats(wardNo, projects) {
     avgProgress: wardProjects.length
       ? Math.round(wardProjects.reduce((s, p) => s + getProgressPercent(p), 0) / wardProjects.length)
       : 0,
-    avgTrust: wardProjects.length
-      ? Math.round(wardProjects.reduce((s, p) => s + calculateTrustScore(p, projects), 0) / wardProjects.length)
-      : 0,
+    avgTrust: (() => {
+      const scored = wardProjects
+        .map((p) => calculateTrustScore(p, projects))
+        .filter((s) => s != null);
+      return scored.length
+        ? Math.round(scored.reduce((s, v) => s + v, 0) / scored.length)
+        : null;
+    })(),
   };
 }
 
@@ -103,8 +143,9 @@ export function getAllComplaints(projects) {
   return projects.flatMap((p) =>
     (p.complaints ?? []).map((c) => ({
       ...c,
-      projectId: p.id,
-      wardNo: p.wardNo,
+      projectId: c.projectId || p.id,
+      projectTitle: c.projectTitle || p.title,
+      wardNo: c.wardNo ?? p.wardNo,
     }))
   );
 }

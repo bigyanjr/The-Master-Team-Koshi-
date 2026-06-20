@@ -21,7 +21,15 @@ export default function RiskAlerts({ projects, limit = 3 }) {
         <p className="text-xs text-slate-500 mt-1">Open a project for full risk details.</p>
       </div>
 
-      {risky.length === 0 ? (
+      {projects.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+          <div className="p-3 rounded-full bg-slate-50 text-slate-400 mb-3">
+            <ShieldCheck className="h-6 w-6" />
+          </div>
+          <p className="text-sm font-semibold text-slate-800">No projects published yet</p>
+          <p className="text-xs text-slate-500 mt-1">Risk alerts appear once ward admins add public project records.</p>
+        </div>
+      ) : risky.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
           <div className="p-3 rounded-full bg-emerald-50 text-emerald-600 mb-3">
             <ShieldCheck className="h-6 w-6" />

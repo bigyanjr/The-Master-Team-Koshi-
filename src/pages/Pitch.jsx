@@ -389,7 +389,7 @@ export default function Pitch() {
         <section className="rounded-2xl bg-brand-950 text-white p-8 sm:p-10 text-center">
           <h2 className="text-xl sm:text-2xl font-bold">Ready to explore?</h2>
           <p className="text-brand-200 text-sm mt-2 max-w-md mx-auto">
-            Demo accounts: citizen@itahari.demo / admin@itahari.demo — password: demo123
+            Demo: citizen@itahari.demo or democitizen — ward admins: ward1@itahari … ward5@itahari — password: demo123
           </p>
           <div className="flex flex-wrap justify-center gap-3 mt-6">
             <Link to="/dashboard">

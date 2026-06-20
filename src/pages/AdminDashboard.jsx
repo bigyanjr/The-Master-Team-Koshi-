@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle, X } from 'lucide-react';
+import { CheckCircle, X, FolderKanban } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { filterProjectsForAdmin } from '../services/authService';
+import { filterProjectsForAdmin } from '../utils/permissions';
 import AdminKPIs from '../components/admin/AdminKPIs';
 import AdminQuickActions from '../components/admin/AdminQuickActions';
 import AdminProjectTable from '../components/admin/AdminProjectTable';
 import { DataResponsibilityNotice } from '../components/admin/AdminActivityFeed';
-
+import EmptyState from '../components/ui/EmptyState';
 export default function AdminDashboard() {
   const { projects, wards, adminActivity } = useData();
   const { profile } = useAuth();
@@ -63,14 +63,26 @@ export default function AdminDashboard() {
 
       <section>
         <h2 className="text-sm font-bold text-slate-700 mb-3">Your ward at a glance</h2>
-        <AdminKPIs projects={wardProjects} wards={wards} demoWardNo={wardNo} />
+        <AdminKPIs projects={wardProjects} demoWardNo={wardNo} />
       </section>
 
-      <section>
-        <AdminProjectTable projects={wardProjects} wards={wards} />
-      </section>
-
-      {wardActivity.length > 0 && (
+      {wardProjects.length === 0 ? (
+        <section className="rounded-2xl border border-dashed border-slate-200 bg-white card-shadow">
+          <EmptyState
+            icon={FolderKanban}
+            title={`No projects added for Ward ${wardNo} yet`}
+            description="Start by adding your first ward project to make budget, tender, payment, and proof details visible to citizens."
+            actionLabel="Add First Project"
+            actionTo="/admin/add-project"
+            actionVariant="primary"
+          />
+        </section>
+      ) : (
+        <section>
+          <AdminProjectTable projects={wardProjects} wards={wards} />
+        </section>
+      )}
+      {wardActivity.length > 0 ? (
         <section className="rounded-xl border border-slate-200 bg-white p-5 card-shadow">
           <h2 className="text-sm font-bold text-slate-700 mb-3">Recent ward activity</h2>
           <ul className="space-y-2">
@@ -81,6 +93,14 @@ export default function AdminDashboard() {
               </li>
             ))}
           </ul>
+        </section>
+      ) : (
+        <section className="rounded-xl border border-dashed border-slate-200 bg-white p-5 card-shadow">
+          <EmptyState
+            compact
+            title="No ward activity yet"
+            description="Activity will appear here when you publish projects, payments, proofs, or progress updates."
+          />
         </section>
       )}
 

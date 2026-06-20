@@ -1,5 +1,5 @@
 /**
- * Project service — form helpers + Firestore with local seed fallback.
+ * Project service — form helpers + Firestore with local in-memory fallback.
  */
 
 import {
@@ -13,6 +13,7 @@ import {
 import { COLLECTIONS, getDb, isFirebaseConfigured } from '../firebase/config';
 import { getLocalProjects } from './localStore';
 import { seedData } from '../data/seedData';
+import { getTotalPaid } from '../utils/riskEngine';
 
 export const PROJECT_CATEGORIES = [
   'Roads',
@@ -85,8 +86,9 @@ export function validateProjectForm(form) {
   return { valid: Object.keys(errors).length === 0, errors };
 }
 
-export function mapFormToProject(form, id) {
+export function mapFormToProject(form, id, meta = {}) {
   const progressPercent = Math.min(100, Math.max(0, Number(form.progressPercent) || 0));
+  const now = new Date().toISOString();
 
   return {
     id,
@@ -103,6 +105,13 @@ export function mapFormToProject(form, id) {
     progressPercent,
     location: form.location.trim(),
     coordinates: null,
+    published: meta.published ?? form.published ?? true,
+    publicVisible: meta.publicVisible ?? form.publicVisible ?? true,
+    createdByUid: meta.createdByUid ?? form.createdByUid ?? null,
+    createdByName: meta.createdByName ?? form.createdByName ?? null,
+    createdAt: meta.createdAt ?? form.createdAt ?? now,
+    updatedAt: meta.updatedAt ?? form.updatedAt ?? now,
+    paidAmount: 0,
     payments: [],
     proofs: [],
     complaints: [],
@@ -201,7 +210,7 @@ export async function getProjects() {
     if (remote?.length) return remote;
     return getLocalProjects();
   } catch (error) {
-    console.warn('[WardWatch] Firestore getProjects failed, using local seed data.', error);
+    console.warn('[WardWatch] Firestore getProjects failed, using local in-memory data.', error);
     return getLocalProjects();
   }
 }
@@ -216,11 +225,14 @@ function buildPaymentPayload(projectId, data, paymentId = generateEntityId('pay'
   return {
     id: paymentId,
     projectId,
+    wardNo: data.wardNo != null ? Number(data.wardNo) : null,
     amount: Number(data.amount),
     date: paymentDate,
     milestone: data.milestone,
     remarks: data.remarks || '',
     proofDocumentUrl: data.proofUrl || data.proofDocumentUrl || null,
+    uploadedByUid: data.uploadedByUid || data.uploadedBy || null,
+    createdAt: new Date().toISOString(),
   };
 }
 
@@ -229,28 +241,31 @@ function buildProofPayload(projectId, data, proofId = generateEntityId('proof'))
   const title = data.title || 'Project proof';
   const fileUrl = data.fileUrl || data.url || null;
 
-  const proof = {
+  return {
     id: proofId,
     projectId,
+    wardNo: data.wardNo != null ? Number(data.wardNo) : null,
     type: data.type || 'during',
     title,
     fileUrl,
     fileName: data.fileName || null,
     fileType: data.fileType || null,
     fileSize: data.fileSize ?? null,
-    uploadedBy: data.uploadedBy || null,
+    uploadedBy: data.uploadedBy || data.uploadedByUid || null,
     uploadedAt: proofDate,
     remarks: data.remarks || '',
     url: fileUrl,
+    createdAt: new Date().toISOString(),
   };
+}
 
-  if (!proof.fileUrl) {
-    const placeholder = `https://placehold.co/800x450/059669/white?text=${encodeURIComponent(title.slice(0, 16))}`;
-    proof.fileUrl = placeholder;
-    proof.url = placeholder;
-  }
-
-  return proof;
+function withDerivedTotals(project) {
+  const paidAmount = getTotalPaid(project);
+  return {
+    ...project,
+    paidAmount,
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export function applyPaymentToProject(project, data) {
@@ -274,20 +289,20 @@ export function applyPaymentToProject(project, data) {
     })));
   }
 
-  return {
+  return withDerivedTotals({
     ...project,
     payments: [...(project.payments ?? []), stripRelationId(payment)],
     proofs,
     status: project.status === 'Planned' ? 'Ongoing' : project.status,
-  };
+  });
 }
 
 export function applyProofToProject(project, data) {
   const proof = buildProofPayload(project.id, data);
-  return {
+  return withDerivedTotals({
     ...project,
     proofs: [...(project.proofs ?? []), stripRelationId(proof)],
-  };
+  });
 }
 
 async function writePaymentToFirestore(payment, proofDoc) {
@@ -301,8 +316,15 @@ async function writePaymentToFirestore(payment, proofDoc) {
 
   const projectRef = doc(db, COLLECTIONS.projects, payment.projectId);
   const projectSnap = await getDoc(projectRef);
-  if (projectSnap.exists() && projectSnap.data().status === 'Planned') {
-    await updateDoc(projectRef, { status: 'Ongoing' });
+  if (projectSnap.exists()) {
+    const current = projectSnap.data();
+    const nextPaid = Number(current.paidAmount || 0) + Number(payment.amount || 0);
+    const updates = {
+      paidAmount: nextPaid,
+      updatedAt: new Date().toISOString(),
+    };
+    if (current.status === 'Planned') updates.status = 'Ongoing';
+    await updateDoc(projectRef, updates);
   }
 }
 
@@ -310,6 +332,21 @@ async function writeProofToFirestore(proof) {
   const db = getDb();
   if (!db) return;
   await setDoc(doc(db, COLLECTIONS.proofs, proof.id), proof);
+
+  const projectRef = doc(db, COLLECTIONS.projects, proof.projectId);
+  const projectSnap = await getDoc(projectRef);
+  if (projectSnap.exists()) {
+    await updateDoc(projectRef, { updatedAt: new Date().toISOString() });
+  }
+}
+
+async function updateProjectDoc(projectId, fields) {
+  const db = getDb();
+  if (!db) return;
+  await updateDoc(doc(db, COLLECTIONS.projects, projectId), {
+    ...fields,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 async function writeProjectToFirestore(project) {
@@ -325,7 +362,10 @@ export async function addPayment(projectId, data) {
     throw new Error(`Project not found: ${projectId}`);
   }
 
-  const payment = buildPaymentPayload(projectId, data);
+  const payment = buildPaymentPayload(projectId, {
+    ...data,
+    wardNo: data.wardNo ?? project.wardNo,
+  });
   let proofDoc = null;
 
   if (data.proofUrl || data.proofFile?.fileUrl || data.fileUrl) {
@@ -339,6 +379,8 @@ export async function addPayment(projectId, data) {
     proofDoc = buildProofPayload(projectId, {
       type: 'document',
       title: `${data.milestone} — payment proof`,
+      wardNo: project.wardNo,
+      uploadedByUid: data.uploadedByUid || data.uploadedBy,
       ...file,
       uploadedAt: payment.date,
       remarks: data.remarks || '',
@@ -349,7 +391,11 @@ export async function addPayment(projectId, data) {
     await writePaymentToFirestore(payment, proofDoc);
   }
 
-  const updatedProject = applyPaymentToProject(project, data);
+  const updatedProject = applyPaymentToProject(project, {
+    ...data,
+    wardNo: project.wardNo,
+    uploadedByUid: data.uploadedByUid,
+  });
   return {
     projectId,
     payment: stripRelationId(payment),
@@ -365,13 +411,20 @@ export async function addProof(projectId, data) {
     throw new Error(`Project not found: ${projectId}`);
   }
 
-  const proof = buildProofPayload(projectId, data);
+  const proof = buildProofPayload(projectId, {
+    ...data,
+    wardNo: data.wardNo ?? project.wardNo,
+    uploadedByUid: data.uploadedByUid || data.uploadedBy,
+  });
 
   if (isFirebaseConfigured()) {
     await writeProofToFirestore(proof);
   }
 
-  const updatedProject = applyProofToProject(project, data);
+  const updatedProject = applyProofToProject(project, {
+    ...data,
+    wardNo: project.wardNo,
+  });
   return {
     projectId,
     proof: stripRelationId(proof),
@@ -382,11 +435,23 @@ export async function addProof(projectId, data) {
 export async function addProject(data) {
   const id = data.id || generateEntityId('proj');
   const project = data.wardNo !== undefined && data.title
-    ? mapFormToProject(data, id)
+    ? mapFormToProject(data, id, {
+      published: data.published,
+      publicVisible: data.publicVisible,
+      createdByUid: data.createdByUid,
+      createdByName: data.createdByName,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+    })
     : {
       payments: [],
       proofs: [],
       complaints: [],
+      paidAmount: 0,
+      published: data.published ?? true,
+      publicVisible: data.publicVisible ?? true,
+      createdAt: data.createdAt || new Date().toISOString(),
+      updatedAt: data.updatedAt || new Date().toISOString(),
       ...data,
       id,
     };
@@ -396,6 +461,12 @@ export async function addProject(data) {
   }
 
   return { id: project.id, project };
+}
+
+export async function updateProjectProgress(projectId, fields) {
+  if (isFirebaseConfigured()) {
+    await updateProjectDoc(projectId, fields);
+  }
 }
 
 /** Optional dev helper — push demo seed into Firestore. */

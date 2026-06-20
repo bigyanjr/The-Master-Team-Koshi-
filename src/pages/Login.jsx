@@ -6,18 +6,18 @@ import Button from '../components/ui/Button';
 import { inputClass } from '../components/admin/FormSection';
 import { useAuth } from '../context/AuthContext';
 import {
-  canAccessAdminPortal,
-  getPostLoginPath,
+  canAccessAdmin,
+  getAdminAccessBlockReason,
+  getUserHomeRoute,
   ROLES,
-  validatePostLogin,
-} from '../services/authService';
+} from '../utils/permissions';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, logout } = useAuth();
+  const { login, logout, getPostLoginPath } = useAuth();
 
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,14 +29,6 @@ export default function Login() {
   const deniedMessage = location.state?.message;
 
   const finishLogin = async (profile) => {
-    const postLogin = validatePostLogin(profile);
-
-    if (!postLogin.ok) {
-      await logout();
-      setError(postLogin.error);
-      return;
-    }
-
     const wantsAdmin = requiresAdmin || redirectTo?.startsWith('/admin');
 
     if (wantsAdmin && profile.role === ROLES.PUBLIC) {
@@ -45,13 +37,13 @@ export default function Login() {
       return;
     }
 
-    if (wantsAdmin && !canAccessAdminPortal(profile)) {
-      await logout();
-      setError(postLogin.error || 'Ward Admin login required.');
+    if (wantsAdmin && !canAccessAdmin(profile)) {
+      setError(getAdminAccessBlockReason(profile) || 'Ward admin access is not available for this account.');
+      navigate(getUserHomeRoute(profile), { replace: true });
       return;
     }
 
-    navigate(redirectTo || getPostLoginPath(profile), { replace: true });
+    navigate(redirectTo || getPostLoginPath(), { replace: true });
   };
 
   const handleSubmit = async (e) => {
@@ -60,12 +52,20 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const profile = await login(email, password);
+      const profile = await login(identifier, password);
       await finishLogin(profile);
     } catch (err) {
-      setError(err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password'
-        ? 'Invalid email or password.'
-        : err.message || 'Could not sign in. Please try again.');
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+        setError('Invalid login ID or password.');
+      } else if (err.code === 'auth/username-not-found') {
+        setError('Username not found.');
+      } else if (err.code === 'auth/ward-admin-not-found') {
+        setError('Ward admin profile not found.');
+      } else if (err.code === 'auth/incomplete-admin-profile') {
+        setError('Your admin profile is incomplete.');
+      } else {
+        setError(err.message || 'Could not sign in. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -94,19 +94,22 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
-            Email
+          <label htmlFor="identifier" className="block text-sm font-medium text-slate-700 mb-1">
+            Email or Username
           </label>
           <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            id="identifier"
+            type="text"
+            autoComplete="username"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             className={inputClass(false)}
-            placeholder="you@example.com"
+            placeholder="Enter email, username, or ward login ID"
             required
           />
+          <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
+            Citizens can login using email or username. Ward admins can use ward1@itahari, ward2@itahari, etc.
+          </p>
         </div>
 
         <div>

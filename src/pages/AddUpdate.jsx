@@ -20,7 +20,8 @@ import {
   applyProjectUpdate,
 } from '../services/updateService';
 import { formatCurrency } from '../utils/formatters';
-import { assertWardProjectAccess, filterProjectsForAdmin } from '../services/authService';
+import { filterProjectsForAdmin, canEditProject } from '../utils/permissions';
+import EmptyState from '../components/ui/EmptyState';
 
 const TYPE_ICONS = {
   payment: Banknote,
@@ -88,6 +89,7 @@ export default function AddUpdate() {
   const [result, setResult] = useState(null);
 
   const wardProjects = filterProjectsForAdmin(projects, profile);
+  const wardNo = profile?.wardNo;
   const projectList = wardProjects;
   const selectedProject = projects.find((p) => p.id === form.projectId);
   const TypeIcon = form.updateType ? TYPE_ICONS[form.updateType] : FolderKanban;
@@ -123,7 +125,7 @@ export default function AddUpdate() {
     if (!validateStep(4)) return;
 
     const project = projects.find((p) => p.id === form.projectId);
-    if (!assertWardProjectAccess(profile, project)) {
+    if (!canEditProject(profile, project)) {
       setAuthError('You are not authorised to manage this ward record.');
       return;
     }
@@ -134,10 +136,10 @@ export default function AddUpdate() {
 
     try {
       const summary = await applyProjectUpdate(form, {
-        addPayment,
-        addUpdate,
-        addProof,
-        completeProject,
+        addPayment: (payload) => addPayment(payload, { uid: profile?.uid }),
+        addUpdate: (payload) => addUpdate({ ...payload, uploadedByUid: profile?.uid }),
+        addProof: (payload) => addProof(payload, { uid: profile?.uid }),
+        completeProject: (payload) => completeProject({ ...payload, uploadedByUid: profile?.uid }),
       });
       setResult(summary);
     } catch (err) {
@@ -196,6 +198,21 @@ export default function AddUpdate() {
             Post Another Update
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (wardProjects.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-white card-shadow">
+        <EmptyState
+          icon={FolderKanban}
+          title={`No projects found for Ward ${wardNo}`}
+          description="Please add a project first before posting payment, progress, or proof updates."
+          actionLabel="Add Project"
+          actionTo="/admin/add-project"
+          actionVariant="primary"
+        />
       </div>
     );
   }

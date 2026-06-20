@@ -24,6 +24,7 @@ import Pitch from './pages/Pitch';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import DevReset from './pages/DevReset';
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="register" element={<Register />} />
             <Route path="scan/:id" element={<ProjectMobileScan />} />
             <Route path="qr-demo/:id" element={<QrDemo />} />
+            <Route path="dev-reset" element={<DevReset />} />
             <Route element={<MainLayout />}>
               <Route path="dashboard" element={<PublicDashboard />} />
               <Route path="projects" element={<Projects />} />

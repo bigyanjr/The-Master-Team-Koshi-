@@ -7,11 +7,14 @@ import {
   loginUser,
   logoutUser,
   validateRegistration,
-  isWardAdmin,
-  isApprovedWardAdmin,
-  getPostLoginPath,
   ROLES,
 } from '../services/authService';
+import {
+  canAccessAdmin,
+  getUserHomeRoute,
+  isApprovedWardAdmin,
+  isWardAdminProfile,
+} from '../utils/permissions';
 
 const AuthContext = createContext(null);
 
@@ -49,14 +52,14 @@ export function AuthProvider({ children }) {
     user: profile,
     loading,
     isAuthenticated: Boolean(profile?.uid && profile?.email),
-    isWardAdmin: isWardAdmin(profile),
+    isWardAdmin: isWardAdminProfile(profile),
     isApprovedWardAdmin: isApprovedWardAdmin(profile),
-    canAccessAdminPortal: isApprovedWardAdmin(profile),
+    canAccessAdminPortal: canAccessAdmin(profile),
     register,
     login,
     logout,
     validateRegistration,
-    getPostLoginPath,
+    getPostLoginPath: () => getUserHomeRoute(profile),
     ROLES,
   }), [profile, loading, register, login, logout]);
 

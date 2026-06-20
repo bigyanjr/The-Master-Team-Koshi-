@@ -1,18 +1,22 @@
 import { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Shield, ArrowLeft, Printer, ScanLine, Building2 } from 'lucide-react';
+import { Shield, ArrowLeft, Printer, ScanLine, Building2, FolderKanban } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { findViewableProject } from '../utils/projectVisibility';
 import { StatusBadge } from '../components/ui/Badge';
 import { formatCurrency, getWardByNo } from '../utils/formatters';
 import Button from '../components/ui/Button';
+import EmptyState from '../components/ui/EmptyState';
 import { getProjectScanUrl } from '../utils/qrUrl';
 import { PRODUCT_NAME, TAGLINE } from '../config/branding';
 
 export default function ProjectQRBoard() {
   const { id } = useParams();
   const { projects, wards, municipality } = useData();
-  const project = projects.find((p) => p.id === id);
+  const { profile } = useAuth();
+  const project = findViewableProject(projects, id, profile);
   const ward = project ? getWardByNo(wards, project.wardNo) : null;
   const url = getProjectScanUrl(id);
 
@@ -26,8 +30,14 @@ export default function ProjectQRBoard() {
 
   if (!project) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-8">
-        <p className="text-slate-500">Project not found.</p>
+      <div className="min-h-screen flex items-center justify-center p-8 bg-slate-100">
+        <EmptyState
+          icon={FolderKanban}
+          title="Project not found"
+          description="This project may not be published yet or may have been removed."
+          actionLabel="View Public Dashboard"
+          actionTo="/dashboard"
+        />
       </div>
     );
   }

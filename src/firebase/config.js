@@ -8,6 +8,9 @@ export const COLLECTIONS = {
   proofs: 'proofs',
   complaints: 'complaints',
   users: 'users',
+  activityLogs: 'activityLogs',
+  aiFeedback: 'aiFeedback',
+  bookmarks: 'bookmarks',
 };
 
 /**

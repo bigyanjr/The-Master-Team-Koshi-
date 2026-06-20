@@ -5,6 +5,7 @@
 import {
   getTotalPaid,
   getBudgetUsedPercent,
+  hasEnoughRiskData,
 } from './riskEngine';
 import {
   getCorruptionRiskScore,
@@ -91,9 +92,19 @@ function delayedProjects(projects) {
 
 function highRiskProjects(projects) {
   return [...projects]
+    .filter((p) => hasEnoughRiskData(p))
     .map((p) => ({ project: p, score: getCorruptionRiskScore(p, projects) }))
     .filter(({ score }) => score < 80)
     .sort((a, b) => a.score - b.score);
+}
+
+export const NO_PUBLIC_PROJECTS_MESSAGE =
+  'This information has not been published yet.';
+
+export const NO_PUBLISHED_RECORDS_MESSAGE = NO_PUBLIC_PROJECTS_MESSAGE;
+
+function isProjectDataIntent(intent) {
+  return ['delayed', 'risk', 'contractor', 'complaint', 'budget', 'progress', 'list'].includes(intent);
 }
 
 function matchIntent(question) {
@@ -124,7 +135,7 @@ function answerBudgetWard(wardNo, projects, nepali) {
   if (nepali) {
     const lines = list.map((p) => {
       const paid = getTotalPaid(p);
-      const flags = detectCorruptionRisks(p, projects);
+      const flags = hasEnoughRiskData(p) ? detectCorruptionRisks(p, projects) : [];
       const concern = flags.length
         ? ` System le yo project lai verification required vaneko cha (${flags[0].label}).`
         : '';
@@ -135,7 +146,7 @@ function answerBudgetWard(wardNo, projects, nepali) {
 
   const lines = list.map((p) => {
     const paid = getTotalPaid(p);
-    const flags = detectCorruptionRisks(p, projects);
+    const flags = hasEnoughRiskData(p) ? detectCorruptionRisks(p, projects) : [];
     const concern = flags.length
       ? ` One transparency concern: ${flags[0].label.toLowerCase()}.`
       : '';
@@ -163,9 +174,13 @@ function answerDelayed(projects, nepali) {
 function answerHighRisk(projects, nepali) {
   const risky = highRiskProjects(projects);
   if (!risky.length) {
+    const hasAnyData = projects.some((p) => hasEnoughRiskData(p));
+    if (!hasAnyData) {
+      return NO_PUBLIC_PROJECTS_MESSAGE;
+    }
     return nepali
-      ? 'Sabai project haru low ya medium risk ma dekhincha.'
-      : 'All projects currently show low or medium governance risk scores.';
+      ? 'Sabai project haru ma ahile risk assess garna pugne public data chaina.'
+      : 'Not enough public payment, proof, or progress data to assess risk yet.';
   }
 
   const top = risky.slice(0, 5);
@@ -245,20 +260,27 @@ export function answerCitizenQuery(question, projects, wards) {
   const category = extractCategory(question);
   const intent = matchIntent(question);
 
+  if (!projects.length && isProjectDataIntent(intent)) {
+    return NO_PUBLISHED_RECORDS_MESSAGE;
+  }
+
   switch (intent) {
     case 'delayed':
       return answerDelayed(projects, nepali);
 
     case 'risk':
       if (wardNo) {
-        const list = wardProjects(projects, wardNo);
+        const list = wardProjects(projects, wardNo).filter((p) => hasEnoughRiskData(p));
         const risky = list.filter((p) => getCorruptionRiskScore(p, projects) < 80);
+        if (!list.length) {
+          return NO_PUBLIC_PROJECTS_MESSAGE;
+        }
         if (!risky.length) {
           return nepali
             ? `Ward ${wardNo} ko project haru ma ahile major risk flag chaina.`
             : `No major transparency concerns are flagged for Ward ${wardNo} projects.`;
         }
-        return answerHighRisk(risky, nepali);
+        return answerHighRisk(risky.map((p) => p), nepali);
       }
       return answerHighRisk(projects, nepali);
 
@@ -278,7 +300,7 @@ export function answerCitizenQuery(question, projects, wards) {
             const p = catList[0];
             const paid = getTotalPaid(p);
             const used = getBudgetUsedPercent(p);
-            const flags = detectCorruptionRisks(p, projects);
+            const flags = hasEnoughRiskData(p) ? detectCorruptionRisks(p, projects) : [];
             if (nepali) {
               return `Ward ${wardNo} ko ${category.toLowerCase()} project "${p.title}" ma NPR ${formatLakh(p.allocatedBudget)} budget allocate bhayeko cha. Ahile samma NPR ${formatLakh(paid)} payment bhayeko cha ra progress ${p.progressPercent}% cha.${flags.length ? ` System le yo project lai verification required vaneko cha: ${flags[0].label}.` : ''}`;
             }
@@ -290,7 +312,10 @@ export function answerCitizenQuery(question, projects, wards) {
       if (category) {
         return answerContractor(category, projects, nepali);
       }
-      return answerBudgetWard(wardNo ?? 3, projects, nepali);
+      if (!projects.length) {
+        return NO_PUBLISHED_RECORDS_MESSAGE;
+      }
+      return answerGeneral(question, projects, wards, nepali);
 
     default:
       if (wardNo) return answerBudgetWard(wardNo, projects, nepali);
@@ -299,9 +324,9 @@ export function answerCitizenQuery(question, projects, wards) {
 }
 
 export const SUGGESTED_QUESTIONS = [
-  'Where did Ward 3 budget go?',
+  'Where did ward budget go?',
   'Show high risk projects',
   'Which projects are delayed?',
   'Who got the road contract?',
-  'Ward 2 ko budget kaha kharcha bhayo?',
+  'Ward budget kaha kharcha bhayo?',
 ];

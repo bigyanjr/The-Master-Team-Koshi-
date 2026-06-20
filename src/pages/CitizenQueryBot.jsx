@@ -55,12 +55,12 @@ function TypingIndicator() {
 }
 
 export default function CitizenQueryBot() {
-  const { projects, wards } = useData();
+  const { publicProjects, wards } = useData();
   const { profile } = useAuth();
   const [messages, setMessages] = useState([
     {
       role: 'bot',
-      content: `${WARD_MITRA_INTRO}\n\nTry English or Roman Nepali:\n• "Where did Ward 3 budget go?"\n• "Ward 2 ko budget kaha kharcha bhayo?"\n• "Show high risk projects"`,
+      content: `${WARD_MITRA_INTRO}\n\nTry English or Roman Nepali:\n• "Where did ward budget go?"\n• "Ward budget kaha kharcha bhayo?"\n• "Show high risk projects"`,
       timestamp: 'Just now',
     },
   ]);
@@ -85,7 +85,7 @@ export default function CitizenQueryBot() {
       const { answer } = respondAsWardMitra({
         question: q,
         userProfile: profile,
-        projects,
+        projects: publicProjects,
         wards,
       });
       setMessages((prev) => [...prev, { role: 'bot', content: answer, timestamp: time }]);
@@ -121,7 +121,7 @@ export default function CitizenQueryBot() {
                 <p className="font-semibold text-sm">{WARD_MITRA_NAME}</p>
                 <p className="text-xs text-slate-300 flex items-center gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  WardWatch Itahari · {projects.length} projects indexed
+                  WardWatch Itahari · {publicProjects.length} published project{publicProjects.length !== 1 ? 's' : ''} indexed
                 </p>
               </div>
             </div>

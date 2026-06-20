@@ -3,9 +3,13 @@ import { PRODUCT_NAME, MUNICIPALITY_DEMO } from '../config/branding';
 import {
   Shield, MapPin, HardHat, Wallet, TrendingUp, Receipt,
   Camera, AlertTriangle, ExternalLink, CheckCircle2,
+  FolderKanban,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { findViewableProject } from '../utils/projectVisibility';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import EmptyState from '../components/ui/EmptyState';
 import { StatusBadge, RiskLevelBadge } from '../components/ui/Badge';
 import ProgressBar from '../components/ui/ProgressBar';
 import { formatCurrency, formatDate, getWardByNo } from '../utils/formatters';
@@ -35,7 +39,8 @@ function InfoRow({ icon: Icon, label, value, highlight }) {
 export default function ProjectMobileScan() {
   const { id } = useParams();
   const { projects, wards, dataLoading } = useData();
-  const project = projects.find((p) => p.id === id);
+  const { profile } = useAuth();
+  const project = findViewableProject(projects, id, profile);
 
   if (dataLoading) {
     return (
@@ -47,11 +52,14 @@ export default function ProjectMobileScan() {
 
   if (!project) {
     return (
-      <div className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-        <Shield className="h-10 w-10 text-slate-300 mb-3" />
-        <h1 className="text-lg font-bold text-slate-800">Project not found</h1>
-        <p className="text-sm text-slate-500 mt-2">This QR code may be outdated.</p>
-        <Link to="/" className="mt-6 text-sm font-semibold text-brand-700">Go to {PRODUCT_NAME}</Link>
+      <div className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center p-6">
+        <EmptyState
+          icon={FolderKanban}
+          title="Project not found"
+          description="This project may not be published yet or may have been removed."
+          actionLabel="View Public Dashboard"
+          actionTo="/dashboard"
+        />
       </div>
     );
   }

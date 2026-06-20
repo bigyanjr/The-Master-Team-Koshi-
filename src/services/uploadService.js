@@ -37,12 +37,14 @@ export function isImageFileType(fileType) {
 /** Resolve URL from proof, complaint evidence, or legacy fields. */
 export function resolveFileUrl(item) {
   if (!item) return null;
+  if (item.evidenceFiles?.[0]?.fileUrl) return item.evidenceFiles[0].fileUrl;
   if (item.evidence?.fileUrl) return item.evidence.fileUrl;
   return item.fileUrl || item.url || item.evidenceUrl || null;
 }
 
 export function resolveFileName(item) {
   if (!item) return null;
+  if (item.evidenceFiles?.[0]?.fileName) return item.evidenceFiles[0].fileName;
   if (item.evidence?.fileName) return item.evidence.fileName;
   return item.fileName || item.evidenceFileName || null;
 }

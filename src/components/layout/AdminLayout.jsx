@@ -1,20 +1,19 @@
 import { useState } from 'react';
-import { NavLink, Outlet, Link, Navigate, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, Link } from 'react-router-dom';
 import {
-  LayoutDashboard, PlusCircle, FileText, Banknote, Camera,
-  MessageSquareWarning, ArrowLeft, Shield, Menu, X,
+  LayoutDashboard, PlusCircle, FileText, ArrowLeft, Shield, Menu, X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import BrandLogo from './BrandLogo';
 import LoadingSpinner from '../ui/LoadingSpinner';
+import { canAccessAdmin, getAdminAccessBlockReason } from '../../utils/permissions';
+import { AdminAccessBlocked } from '../auth/AdminAccessMessages';
 
 const adminNav = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/admin', label: 'Admin Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/add-project', label: 'Add Project', icon: PlusCircle },
-  { to: '/admin/add-payment', label: 'Add Payment', icon: Banknote },
-  { to: '/admin/upload-proof', label: 'Upload Proof', icon: Camera },
-  { to: '/admin/add-update', label: 'Post Update', icon: FileText },
-  { to: '/admin/complaints', label: 'Complaints', icon: MessageSquareWarning },
+  { to: '/admin/add-update', label: 'Add Update', icon: FileText },
+  { to: '/profile', label: 'Profile', icon: Shield },
 ];
 
 function AdminNavLinks({ onNavigate, className = '' }) {
@@ -43,8 +42,7 @@ function AdminNavLinks({ onNavigate, className = '' }) {
 }
 
 export default function AdminLayout() {
-  const { profile, isAuthenticated, loading, canAccessAdminPortal } = useAuth();
-  const location = useLocation();
+  const { profile, isAuthenticated, loading } = useAuth();
   const adminWardNo = profile?.wardNo;
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -56,14 +54,10 @@ export default function AdminLayout() {
     );
   }
 
-  if (!isAuthenticated || !canAccessAdminPortal) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-        state={{ from: location.pathname, requiresAdmin: true }}
-      />
-    );
+  if (!isAuthenticated || !canAccessAdmin(profile)) {
+    const message = getAdminAccessBlockReason(profile)
+      || 'Ward admin approval is required before you can manage official records.';
+    return <AdminAccessBlocked message={message} />;
   }
 
   return (

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   MessageSquareHeart, Send, CheckCircle, Info, Shield,
-  FolderKanban, Calendar, Tag, User, FileText,
+  FolderKanban, Calendar, Tag, User, FileText, LogIn,
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -20,7 +20,9 @@ import {
 import FileUpload from '../components/ui/FileUpload';
 import { resolveFileUrl, resolveFileName, isImageFileType } from '../services/uploadService';
 import { formatDate, getWardByNo } from '../utils/formatters';
-import { getAllComplaints } from '../utils/riskEngine';
+import WardSelect from '../components/form/WardSelect';
+import { formatWardLabel } from '../constants/wards';
+import { getPublicProjects, getPublicComplaints } from '../utils/projectVisibility';
 
 function CivicNotice() {
   return (
@@ -54,7 +56,7 @@ function ComplaintCard({ complaint, project, ward }) {
         </span>
       </div>
 
-      {project && (
+      {project ? (
         <Link
           to={`/projects/${complaint.projectId}`}
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800 hover:underline mb-2"
@@ -62,6 +64,8 @@ function ComplaintCard({ complaint, project, ward }) {
           <FolderKanban className="h-3.5 w-3.5 shrink-0" />
           {project.title}
         </Link>
+      ) : complaint.projectTitle && (
+        <p className="text-sm font-semibold text-brand-700 mb-2">{complaint.projectTitle}</p>
       )}
 
       <p className="text-sm text-slate-700 leading-relaxed">{complaint.message}</p>
@@ -98,14 +102,14 @@ function ComplaintCard({ complaint, project, ward }) {
           <User className="h-3 w-3" />
           {getCitizenDisplayName(complaint.citizenName)}
         </span>
-        {ward && <span>Ward {ward.number} — {ward.name}</span>}
+        {ward && <span>{formatWardLabel(ward.number)}</span>}
       </div>
     </article>
   );
 }
 
 export default function Complaints() {
-  const { projects, wards, addComplaint } = useData();
+  const { publicProjects, projects, wards, addComplaint } = useData();
   const { profile, isAuthenticated } = useAuth();
   const [searchParams] = useSearchParams();
 
@@ -128,34 +132,25 @@ export default function Complaints() {
     };
   }, [form, profile]);
 
-  const wadaList = useMemo(
-    () => wards.filter((w) => w.number >= 1 && w.number <= 5).sort((a, b) => a.number - b.number),
-    [wards],
-  );
-
   const selectedWardNo = useMemo(() => {
     if (form.wardNo) return form.wardNo;
+    if (profile?.wardNo) return String(profile.wardNo);
     if (form.projectId) {
       const project = projects.find((p) => p.id === form.projectId);
       return project?.wardNo ? String(project.wardNo) : '';
     }
     return '';
-  }, [form.wardNo, form.projectId, projects]);
+  }, [form.wardNo, form.projectId, profile, projects]);
 
   const wadaProjects = useMemo(() => {
-    const inWadaRange = projects.filter((p) => p.wardNo >= 1 && p.wardNo <= 5);
     if (!selectedWardNo) return [];
-    return inWadaRange
+    return getPublicProjects(projects)
       .filter((p) => p.wardNo === Number(selectedWardNo))
       .sort((a, b) => a.title.localeCompare(b.title));
   }, [projects, selectedWardNo]);
 
   const complaints = useMemo(
-    () => getAllComplaints(projects)
-      .filter((c) => {
-        const project = projects.find((p) => p.id === c.projectId);
-        return project && project.wardNo >= 1 && project.wardNo <= 5;
-      })
+    () => getPublicComplaints(projects)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
     [projects],
   );
@@ -168,10 +163,7 @@ export default function Complaints() {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
       if (field === 'wardNo') {
-        const stillValid = projects.some(
-          (p) => p.id === prev.projectId && p.wardNo === Number(value),
-        );
-        if (!stillValid) next.projectId = '';
+        next.projectId = '';
       }
       return next;
     });
@@ -197,17 +189,13 @@ export default function Complaints() {
     try {
       await addComplaint({
         ...displayForm,
+        wardNo: selectedWardNo,
         submittedByUid: profile?.uid || null,
       });
       setSubmitted(true);
       setForm({
         ...EMPTY_COMPLAINT_FORM,
-        wardNo: form.wardNo,
-        ...(profile ? {
-          citizenName: profile.fullName || '',
-          email: profile.email || '',
-          phone: profile.phone || '',
-        } : {}),
+        wardNo: profile?.wardNo ? String(profile.wardNo) : form.wardNo,
       });
     } finally {
       setSubmitting(false);
@@ -221,19 +209,34 @@ export default function Complaints() {
       <div className="mb-8">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-semibold mb-4">
           <Shield className="h-3.5 w-3.5" />
-          Civic participation
+          Public feedback
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-          Citizen Feedback for Itahari Projects
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-950 tracking-tight">
+          Submit Public Feedback
         </h1>
-        <p className="text-slate-500 mt-2 max-w-2xl leading-relaxed">
-          Share concerns about Itahari ward projects openly. Your voice helps keep public spending accountable
-          — every submission is reviewed by ward officials.
+        <p className="text-slate-600 mt-2 max-w-2xl leading-relaxed text-base">
+          Report delay, poor quality work, missing proof, or transparency concerns about published ward projects.
         </p>
       </div>
 
       <div className="mb-8">
         <CivicNotice />
+        {!isAuthenticated && (
+          <div className="mt-4 flex gap-2.5 p-4 rounded-xl bg-brand-50 border border-brand-100 text-sm text-brand-900">
+            <LogIn className="h-4 w-4 shrink-0 mt-0.5 text-brand-600" />
+            <p className="leading-relaxed">
+              Login to track your submitted complaints.{' '}
+              <Link to="/login" className="font-semibold text-brand-800 hover:underline">
+                Sign in
+              </Link>
+              {' '}or{' '}
+              <Link to="/register" className="font-semibold text-brand-800 hover:underline">
+                create an account
+              </Link>
+              .
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-10">
@@ -253,7 +256,16 @@ export default function Complaints() {
             </div>
 
             <div className="overflow-y-auto flex-1 p-5 sm:p-6 overscroll-contain">
-              {submitted ? (
+              {publicProjects.length === 0 ? (
+                <EmptyState
+                  compact
+                  icon={FolderKanban}
+                  title="Complaint submission not available yet"
+                  description="Complaint submission will be available after ward projects are published."
+                  actionLabel="View Dashboard"
+                  actionTo="/dashboard"
+                />
+              ) : submitted ? (
                 <div className="text-center py-4">
                   <div className="inline-flex p-3 rounded-full bg-emerald-100 text-emerald-600 mb-4">
                     <CheckCircle className="h-8 w-8" />
@@ -275,21 +287,15 @@ export default function Complaints() {
                 <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                   <div>
                     <label htmlFor="wardNo" className="block text-sm font-medium text-slate-700 mb-1">
-                      Wada <span className="text-red-500">*</span>
+                      Ward <span className="text-red-500">*</span>
                     </label>
-                    <select
+                    <WardSelect
                       id="wardNo"
                       value={selectedWardNo}
                       onChange={(e) => update('wardNo', e.target.value)}
-                      className={inputClass(errors.wardNo)}
-                    >
-                      <option value="">Select wada (1–5)</option>
-                      {wadaList.map((w) => (
-                        <option key={w.id} value={w.number}>
-                          Wada {w.number} — {w.name}
-                        </option>
-                      ))}
-                    </select>
+                      emptyLabel="Select ward (1–5)"
+                      selectClassName={inputClass(errors.wardNo)}
+                    />
                     <FieldError message={errors.wardNo} />
                   </div>
 
@@ -305,7 +311,7 @@ export default function Complaints() {
                       disabled={!selectedWardNo}
                     >
                       <option value="">
-                        {selectedWardNo ? 'Select a project in this wada' : 'Choose wada first'}
+                        {selectedWardNo ? 'Select a project in this ward' : 'Choose ward first'}
                       </option>
                       {wadaProjects.map((p) => (
                         <option key={p.id} value={p.id}>
@@ -351,8 +357,13 @@ export default function Complaints() {
 
                   <div className="pt-2 border-t border-slate-100">
                     <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">
-                      {isAuthenticated ? 'Your contact details (auto-filled)' : 'Optional contact details'}
+                      {isAuthenticated ? 'Your contact details (from profile)' : 'Optional contact details'}
                     </p>
+                    {isAuthenticated && (
+                      <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                        Pre-filled from your account. You can update your phone before submitting.
+                      </p>
+                    )}
                     <div className="space-y-3">
                       <div>
                         <label htmlFor="citizenName" className="block text-sm font-medium text-slate-700 mb-1">
@@ -362,8 +373,9 @@ export default function Complaints() {
                           id="citizenName"
                           value={displayForm.citizenName}
                           onChange={(e) => update('citizenName', e.target.value)}
-                          className={inputClass(false)}
-                          placeholder="Leave blank to submit anonymously"
+                          className={`${inputClass(false)} ${isAuthenticated ? 'bg-slate-50 text-slate-700 cursor-not-allowed' : ''}`}
+                          placeholder={isAuthenticated ? undefined : 'Leave blank to submit anonymously'}
+                          readOnly={isAuthenticated}
                         />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -389,8 +401,9 @@ export default function Complaints() {
                             type="email"
                             value={displayForm.email}
                             onChange={(e) => update('email', e.target.value)}
-                            className={inputClass(errors.email)}
+                            className={`${inputClass(errors.email)} ${isAuthenticated ? 'bg-slate-50 text-slate-700 cursor-not-allowed' : ''}`}
                             placeholder="you@example.com"
+                            readOnly={isAuthenticated}
                           />
                           <FieldError message={errors.email} />
                         </div>
@@ -437,8 +450,8 @@ export default function Complaints() {
           {complaints.length === 0 ? (
             <EmptyState
               icon={MessageSquareHeart}
-              title="No feedback yet"
-              description="Be the first to raise a concern about ward project transparency."
+              title="No public complaints submitted yet"
+              description="Citizen feedback and complaints will appear here after they are submitted and linked to public projects."
             />
           ) : (
             <div className="space-y-4">

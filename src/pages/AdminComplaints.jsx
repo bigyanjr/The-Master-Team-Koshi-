@@ -9,7 +9,7 @@ import { formatDate, getWardByNo } from '../utils/formatters';
 import { Link } from 'react-router-dom';
 import { User, ExternalLink, Tag } from 'lucide-react';
 import { getCitizenDisplayName, getComplaintCategoryLabel } from '../services/complaintService';
-import { filterComplaintsForAdmin } from '../services/authService';
+import { filterComplaintsForAdmin, canReviewComplaint } from '../utils/permissions';
 
 const REVIEW_STATUSES = ['Pending', 'Under Review', 'Verified', 'Resolved', 'Rejected'];
 
@@ -26,6 +26,12 @@ export default function AdminComplaints() {
   const pendingCount = allComplaints.filter(
     (c) => c.status === 'Pending' || c.status === 'Under Review',
   ).length;
+
+  const handleStatusChange = (complaint, status) => {
+    if (!canReviewComplaint(profile, complaint)) return;
+    const complaintId = complaint.id || `${complaint.projectId}-${complaint.createdAt}`;
+    updateComplaintStatus(complaintId, status);
+  };
 
   return (
     <div className="space-y-6">
@@ -88,7 +94,7 @@ export default function AdminComplaints() {
                         key={status}
                         variant={complaint.status === status ? 'primary' : 'secondary'}
                         size="sm"
-                        onClick={() => updateComplaintStatus(complaintId, status)}
+                        onClick={() => handleStatusChange(complaint, status)}
                       >
                         {status}
                       </Button>

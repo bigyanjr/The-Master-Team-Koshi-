@@ -16,11 +16,14 @@ import {
   PROJECT_STATUSES,
   validateProjectForm,
 } from '../services/projectService';
-import { formatCurrency, getWardByNo } from '../utils/formatters';
+import { WardReadOnlyField } from '../components/form/WardSelect';
+import { formatWardLabel } from '../constants/wards';
+import { formatCurrency } from '../utils/formatters';
+import { canManageWard } from '../utils/permissions';
 import { calculateTrustScore, getRiskLevel } from '../utils/riskEngine';
 
 export default function AddProject() {
-  const { wards, addProject, addProof, projects } = useData();
+  const { addProject, addProof, projects } = useData();
   const { profile } = useAuth();
   const navigate = useNavigate();
   const adminWardNo = profile?.wardNo;
@@ -31,6 +34,7 @@ export default function AddProject() {
   });
   const [initialDocument, setInitialDocument] = useState(null);
   const [errors, setErrors] = useState({});
+  const [authError, setAuthError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState(null);
 
@@ -41,6 +45,13 @@ export default function AddProject() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setAuthError('');
+
+    if (!canManageWard(profile, adminWardNo)) {
+      setAuthError('You are not authorised to create projects for this ward.');
+      return;
+    }
+
     const payload = { ...form, wardNo: String(adminWardNo) };
     const validation = validateProjectForm(payload);
     if (!validation.valid) {
@@ -52,7 +63,10 @@ export default function AddProject() {
     setErrors({});
 
     try {
-      const result = await addProject(payload);
+      const result = await addProject(payload, {
+        uid: profile?.uid,
+        fullName: profile?.fullName,
+      });
       if (initialDocument?.fileUrl) {
         await addProof({
           projectId: result.id,
@@ -60,8 +74,9 @@ export default function AddProject() {
           type: 'before',
           uploadedAt: new Date().toISOString().split('T')[0],
           uploadedBy: profile?.uid || null,
+          wardNo: adminWardNo,
           ...initialDocument,
-        });
+        }, { uid: profile?.uid });
       }
       setCreated(result);
     } finally {
@@ -71,7 +86,6 @@ export default function AddProject() {
 
   if (created) {
     const { id, project } = created;
-    const ward = getWardByNo(wards, project.wardNo);
     const trust = calculateTrustScore(project, projects);
     const risk = getRiskLevel(project, projects);
 
@@ -95,7 +109,7 @@ export default function AddProject() {
             <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{project.category}</span>
           </div>
           <h3 className="text-xl font-bold text-slate-900">{project.title}</h3>
-          <p className="text-sm text-slate-500 mt-1">Ward {ward?.number} — {ward?.name}</p>
+          <p className="text-sm text-slate-500 mt-1">{formatWardLabel(project.wardNo)}</p>
           <p className="text-sm text-slate-600 mt-3">{project.description}</p>
           <div className="grid grid-cols-2 gap-3 mt-4 text-sm">
             <div className="p-3 rounded-xl bg-slate-50">
@@ -151,6 +165,12 @@ export default function AddProject() {
 
       <PublicVisibilityWarning />
 
+      {authError && (
+        <div className="p-3 rounded-lg bg-red-50 border border-red-100 text-sm text-red-700">
+          {authError}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-5" noValidate>
         <FormSection icon={FileText} title="Project Details" subtitle="Core information visible to citizens">
           <div className="space-y-4">
@@ -169,18 +189,10 @@ export default function AddProject() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="wardNo" className="block text-sm font-medium text-slate-700 mb-1">
-                  Ward
-                </label>
-                <input
-                  id="wardNo"
-                  value={adminWardNo ? `Ward ${adminWardNo}` : ''}
-                  readOnly
-                  className={`${inputClass(false)} bg-slate-50 text-slate-700 cursor-not-allowed`}
-                />
-                <p className="text-xs text-slate-400 mt-1">Projects are assigned to your logged-in ward.</p>
-              </div>
+              <WardReadOnlyField
+                wardNo={adminWardNo}
+                hint="Projects are assigned to your logged-in ward."
+              />
               <div>
                 <label htmlFor="category" className="block text-sm font-medium text-slate-700 mb-1">
                   Category <span className="text-red-500">*</span>

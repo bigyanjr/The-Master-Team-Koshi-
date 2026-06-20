@@ -9,6 +9,8 @@ import { COLLECTIONS, getDb, isFirebaseConfigured } from '../firebase/config';
 import { getLocalProjects } from './localStore';
 import { generateEntityId } from './projectService';
 import { UPLOAD_MAX_BYTES } from './uploadService';
+import { getAllComplaints } from '../utils/riskEngine';
+import { isPublicProject } from '../utils/projectVisibility';
 
 export { UPLOAD_MAX_BYTES as EVIDENCE_MAX_BYTES, UPLOAD_ACCEPT_STRING as EVIDENCE_ACCEPT } from './uploadService';
 
@@ -34,7 +36,7 @@ export const EMPTY_COMPLAINT_FORM = {
 export function validateComplaintForm(form) {
   const errors = {};
 
-  if (!form.wardNo) errors.wardNo = 'Please select a wada';
+  if (!form.wardNo) errors.wardNo = 'Please select a ward';
   if (!form.projectId) errors.projectId = 'Please select a project';
   if (!form.category) errors.category = 'Please select a category';
   if (!form.message?.trim()) errors.message = 'Please describe your concern';
@@ -53,27 +55,47 @@ export function validateComplaintForm(form) {
   return { valid: Object.keys(errors).length === 0, errors };
 }
 
-export function mapFormToComplaint(form, id) {
-  const evidence = form.evidenceFile?.fileUrl
-    ? {
-      fileUrl: form.evidenceFile.fileUrl,
-      fileName: form.evidenceFile.fileName,
-      fileType: form.evidenceFile.fileType,
-      uploadedAt: new Date().toISOString().split('T')[0],
-    }
-    : null;
+export function buildEvidenceFiles(form) {
+  if (!form.evidenceFile?.fileUrl) return [];
+
+  return [{
+    fileUrl: form.evidenceFile.fileUrl,
+    fileName: form.evidenceFile.fileName,
+    fileType: form.evidenceFile.fileType,
+    uploadedAt: new Date().toISOString().split('T')[0],
+  }];
+}
+
+export function enrichComplaintForm(form, projects = []) {
+  const project = projects.find((p) => p.id === form.projectId);
+  const wardNoRaw = form.wardNo ?? project?.wardNo;
+
+  return {
+    ...form,
+    projectTitle: form.projectTitle || project?.title || null,
+    wardNo: wardNoRaw != null && wardNoRaw !== '' ? Number(wardNoRaw) : null,
+  };
+}
+
+export function mapFormToComplaint(form, id, meta = {}) {
+  const evidenceFiles = buildEvidenceFiles(form);
+  const legacyEvidence = evidenceFiles[0] || null;
 
   return {
     id,
+    projectId: meta.projectId || form.projectId,
+    projectTitle: meta.projectTitle || form.projectTitle || null,
+    wardNo: meta.wardNo ?? form.wardNo ?? null,
     citizenName: form.citizenName?.trim() || null,
     phone: form.phone?.trim() || null,
     email: form.email?.trim() || null,
     submittedByUid: form.submittedByUid || null,
     category: form.category,
     message: form.message.trim(),
-    evidence,
-    evidenceUrl: evidence?.fileUrl || null,
-    evidenceFileName: evidence?.fileName || null,
+    evidenceFiles,
+    evidence: legacyEvidence,
+    evidenceUrl: legacyEvidence?.fileUrl || null,
+    evidenceFileName: legacyEvidence?.fileName || null,
     status: 'Pending',
     createdAt: new Date().toISOString().split('T')[0],
   };
@@ -102,6 +124,29 @@ export function getComplaintCategoryLabel(category) {
   return category || 'General concern';
 }
 
+export function getComplaintsForUser(profile, projects) {
+  if (!profile) return [];
+
+  return getAllComplaints(projects)
+    .filter((complaint) => {
+      if (profile.uid) {
+        return complaint.submittedByUid === profile.uid;
+      }
+      if (profile.email && complaint.email) {
+        return complaint.email.toLowerCase() === profile.email.toLowerCase();
+      }
+      if (profile.fullName && complaint.citizenName) {
+        return complaint.citizenName.toLowerCase() === profile.fullName.toLowerCase();
+      }
+      return false;
+    })
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+export function countSubmittedComplaints(profile, projects) {
+  return getComplaintsForUser(profile, projects).length;
+}
+
 export function getCitizenDisplayName(citizenName) {
   return citizenName?.trim() || 'Anonymous citizen';
 }
@@ -123,23 +168,36 @@ export function findComplaintInProjects(projects, complaintId) {
   return null;
 }
 
-export async function addComplaint(data) {
-  const id = generateEntityId('comp');
-  const complaint = mapFormToComplaint(data, id);
-  const { projectId } = data;
+export async function addComplaint(data, projects = []) {
+  const enriched = enrichComplaintForm(data, projects);
+  const project = projects.find((p) => p.id === enriched.projectId);
 
-  if (!projectId) {
+  if (!project || !isPublicProject(project)) {
+    throw new Error('Complaints can only be submitted for published ward projects.');
+  }
+
+  const id = generateEntityId('comp');
+  const complaint = mapFormToComplaint(enriched, id, {
+    projectId: enriched.projectId,
+    projectTitle: enriched.projectTitle,
+    wardNo: enriched.wardNo,
+  });
+
+  if (!enriched.projectId) {
     throw new Error('projectId is required');
   }
 
   if (isFirebaseConfigured()) {
     const db = getDb();
     if (db) {
-      await setDoc(doc(db, COLLECTIONS.complaints, id), { ...complaint, projectId });
+      await setDoc(doc(db, COLLECTIONS.complaints, id), {
+        ...complaint,
+        projectId: enriched.projectId,
+      });
     }
   }
 
-  return { id, complaint, projectId };
+  return { id, complaint, projectId: enriched.projectId };
 }
 
 export async function updateComplaintStatus(id, status) {

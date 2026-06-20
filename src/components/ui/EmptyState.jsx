@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Inbox } from 'lucide-react';
 import Button from './Button';
 
@@ -7,7 +8,10 @@ export default function EmptyState({
   description,
   actionLabel,
   onAction,
+  actionTo,
+  actionVariant = 'secondary',
   compact = false,
+  children,
 }) {
   return (
     <div className={`flex flex-col items-center justify-center text-center ${compact ? 'py-8 px-4' : 'py-14 px-6'}`}>
@@ -16,10 +20,16 @@ export default function EmptyState({
       </div>
       <h3 className={`font-semibold text-slate-900 ${compact ? 'text-base' : 'text-lg'}`}>{title}</h3>
       {description && (
-        <p className="text-sm text-slate-500 mt-2 max-w-sm leading-relaxed">{description}</p>
+        <p className="text-sm text-slate-500 mt-2 max-w-md leading-relaxed">{description}</p>
       )}
-      {actionLabel && onAction && (
-        <Button className="mt-5" variant="secondary" size="sm" onClick={onAction}>
+      {children}
+      {actionLabel && actionTo && (
+        <Link to={actionTo} className="mt-5">
+          <Button variant={actionVariant} size="sm">{actionLabel}</Button>
+        </Link>
+      )}
+      {actionLabel && onAction && !actionTo && (
+        <Button className="mt-5" variant={actionVariant} size="sm" onClick={onAction}>
           {actionLabel}
         </Button>
       )}

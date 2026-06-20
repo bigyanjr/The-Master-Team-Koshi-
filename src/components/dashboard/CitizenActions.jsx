@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Bot, MessageSquareHeart, ScanLine, ArrowRight } from 'lucide-react';
 import Button from '../ui/Button';
-import { DEMO_PROJECT_IDS } from '../../config/branding';
 
 const actions = [
   {
@@ -25,9 +24,9 @@ const actions = [
   {
     icon: ScanLine,
     title: 'Scan Project QR',
-    line: 'See live project info at a site.',
-    to: `/qr-demo/${DEMO_PROJECT_IDS.qrScan}`,
-    cta: 'Scan QR',
+    line: 'Open a published project to view its site QR code.',
+    to: '/projects',
+    cta: 'Browse Projects',
     variant: 'secondary',
     iconBg: 'bg-blue-100 text-blue-700',
   },

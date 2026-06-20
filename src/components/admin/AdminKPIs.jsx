@@ -2,10 +2,12 @@ import {
   Wallet, FolderKanban, Clock, MessageSquareWarning, AlertTriangle,
 } from 'lucide-react';
 import { formatCompactCurrency } from '../../utils/formatters';
+import { formatWardLabel } from '../../constants/wards';
 import {
   calculateTrustScore,
   getRiskFlags,
   getAllComplaints,
+  hasEnoughRiskData,
 } from '../../utils/riskEngine';
 
 const iconStyles = {
@@ -15,8 +17,7 @@ const iconStyles = {
   red: 'bg-red-100 text-red-700',
 };
 
-export default function AdminKPIs({ projects, wards, demoWardNo }) {
-  const ward = wards.find((w) => w.number === demoWardNo);
+export default function AdminKPIs({ projects, demoWardNo }) {
   const wardProjects = projects.filter((p) => p.wardNo === demoWardNo);
   const allComplaints = getAllComplaints(projects);
   const wardComplaints = allComplaints.filter((c) => c.wardNo === demoWardNo);
@@ -25,10 +26,13 @@ export default function AdminKPIs({ projects, wards, demoWardNo }) {
     (c) => c.status === 'Pending' || c.status === 'Under Review' || c.status === 'Verified'
   ).length;
 
-  const highRisk = wardProjects.filter((p) => calculateTrustScore(p) < 50).length;
+  const highRisk = wardProjects.filter(
+    (p) => hasEnoughRiskData(p) && calculateTrustScore(p, projects) < 50,
+  ).length;
 
   const pendingUpdates = wardProjects.filter((p) => {
-    const flags = getRiskFlags(p);
+    if (!hasEnoughRiskData(p)) return false;
+    const flags = getRiskFlags(p, projects);
     return flags.some((f) =>
       f.id === 'PAYMENT_WITHOUT_PROOF' || f.id === 'DELAYED_PROJECT'
     ) || (p.status === 'Ongoing' && (p.payments?.length ?? 0) > (p.proofs?.length ?? 0));
@@ -37,15 +41,17 @@ export default function AdminKPIs({ projects, wards, demoWardNo }) {
   const kpis = [
     {
       label: 'My Ward Budget',
-      value: formatCompactCurrency(ward?.allocatedBudget ?? 0),
-      sub: ward?.name ?? `Ward ${demoWardNo}`,
+      value: formatCompactCurrency(
+        wardProjects.reduce((sum, p) => sum + (p.allocatedBudget ?? 0), 0),
+      ),
+      sub: formatWardLabel(demoWardNo),
       icon: Wallet,
       color: 'brand',
     },
     {
       label: 'Projects Managed',
       value: wardProjects.length,
-      sub: `${projects.length} total municipality-wide`,
+      sub: wardProjects.length === 1 ? '1 project in your ward' : `${wardProjects.length} in your ward`,
       icon: FolderKanban,
       color: 'emerald',
     },

@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import Button from '../ui/Button';
 import ProgressBar from '../ui/ProgressBar';
 import { aggregateWardStats } from '../../utils/riskEngine';
+import { formatWardLabel } from '../../constants/wards';
 
 function trustStyles(score) {
   if (score >= 80) return { ring: 'ring-emerald-200', badge: 'bg-emerald-100 text-emerald-800', label: 'Good trust' };
@@ -24,8 +25,9 @@ export default function WardSummaryCard({ ward, projects }) {
           {ward.number}
         </div>
         <div className="min-w-0">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Ward {ward.number}</p>
-          <h3 className="font-semibold text-brand-950 text-sm leading-snug line-clamp-2">{ward.name}</h3>
+          <h3 className="font-semibold text-brand-950 text-sm leading-snug">
+            {formatWardLabel(ward.number)}
+          </h3>
         </div>
       </div>
 

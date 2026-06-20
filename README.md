@@ -79,7 +79,7 @@ Construction sites can display a QR code that opens live project data on any pho
 | 2 | Scan with phone camera |
 | 3 | Mobile view opens at `/scan/proj-ith-01` with budget, payments, proof & trust score |
 
-**Phone testing:** Set `VITE_PUBLIC_URL=http://YOUR_LAN_IP:5173` in `.env` — localhost URLs do not work on phones.
+**Phone testing:** Set `VITE_PUBLIC_URL=http://YOUR_LAN_IP:5174` in `.env`, run `npm run dev`, then open the **Network** URL on your laptop (not localhost) before scanning.
 
 ---
 
@@ -126,7 +126,9 @@ janata-ledger/
 │   │   ├── project/            # Budget, payments, proofs, AI panel
 │   │   ├── layout/             # Header, footer, nav
 │   │   └── ui/                 # Button, badge, file upload, etc.
-│   ├── services/               # Auth, complaints, uploads, Firebase
+│   ├── services/               # Auth, complaints, uploads, reset, seed
+│   │   ├── resetService.js     # Dev-only Firestore/local clear
+│   │   └── seedService.js      # Fresh Itahari demo seed
 │   └── utils/
 │       ├── riskEngine.js       # Trust score, ward stats, activity
 │       ├── corruptionRiskDetector.js
@@ -174,10 +176,15 @@ npm run lint
 
 ```bash
 npm run dev
-# Note your PC's Wi‑Fi IPv4 (ipconfig on Windows)
-# Add to .env:
-# VITE_PUBLIC_URL=http://192.168.x.x:5173
 ```
+
+1. Note your PC's Wi‑Fi IPv4 from `ipconfig` (e.g. `192.168.29.142`).
+2. Add to `.env`: `VITE_PUBLIC_URL=http://192.168.29.142:5174` (IP only — port is synced automatically).
+3. Restart dev server, then open the **Network** URL Vite prints (e.g. `http://192.168.29.142:5174`) on your laptop — **not** `localhost`.
+4. Go to `/qr-demo/proj-ith-01` and scan with your phone on the **same Wi‑Fi**.
+5. If it times out, allow **Node.js** through Windows Firewall when prompted.
+
+**Common mistake:** QR shows port `5177` but dev server runs on `5174` — always use the Network URL from the terminal.
 
 ---
 
@@ -190,7 +197,7 @@ Copy `.env.example` to `.env`:
 VITE_AI_API_KEY=
 
 # Optional — mobile QR base URL (required for phone scanning on local network)
-VITE_PUBLIC_URL=http://192.168.x.x:5173
+VITE_PUBLIC_URL=http://192.168.x.x:5174
 
 # Optional — Firebase (app uses seed data if any value is missing)
 VITE_FIREBASE_API_KEY=
@@ -198,7 +205,8 @@ VITE_FIREBASE_AUTH_DOMAIN=
 VITE_FIREBASE_PROJECT_ID=
 VITE_FIREBASE_STORAGE_BUCKET=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=
+# Optional — enable /dev-reset page in preview/production builds (default: dev only)
+# VITE_ENABLE_DEV_RESET=true
 ```
 
 > **Note:** The app runs fully offline with seed data when Firebase and AI keys are not set.
@@ -207,17 +215,93 @@ VITE_FIREBASE_APP_ID=
 
 ## Demo Accounts
 
-| Role | Email | Password |
+| Role | Login | Password |
 |------|-------|----------|
-| **Citizen** | `citizen@itahari.demo` | `demo123` |
-| **Ward Admin** | `admin@itahari.demo` | `demo123` |
+| **Citizen** | `citizen@itahari.demo` or username `democitizen` | `demo123` |
 
-- Citizens can browse, ask AI, and submit complaints.  
-- Ward admins access `/admin` to add projects, post updates, and review complaints.
+Citizens can browse, ask AI, and submit complaints. You can also register a new citizen account with a unique username at `/register`.
+
+---
+
+## Ward Admin Demo Logins
+
+Ward IT/Admin users sign in with short ward login IDs. Each maps internally to a Firebase email like `ward1@itahari.demo`.
+
+| Ward | Login ID | Password |
+|------|----------|----------|
+| **Ward 1** | `ward1@itahari` | `demo123` |
+| **Ward 2** | `ward2@itahari` | `demo123` |
+| **Ward 3** | `ward3@itahari` | `demo123` |
+| **Ward 4** | `ward4@itahari` | `demo123` |
+| **Ward 5** | `ward5@itahari` | `demo123` |
+
+After login, each ward admin sees only their assigned ward dashboard (e.g. **Ward 1 Admin Dashboard**).
 
 **Hackathon demo:** Ward IT/Admin accounts can self-register and are **auto-approved** immediately. In production, municipality approval should be required before admin access is granted.
 
 You can also register new accounts at `/register` — choose **Citizen** or **Ward IT/Admin**.
+
+### Firebase setup for ward demo accounts
+
+Firebase Authentication users must exist with these actual emails:
+
+- `ward1@itahari.demo`
+- `ward2@itahari.demo`
+- `ward3@itahari.demo`
+- `ward4@itahari.demo`
+- `ward5@itahari.demo`
+
+Each password: `demo123`
+
+The Firestore `users` collection must have matching documents for each UID with:
+
+- `role: "ward_admin"`
+- `wardNo: 1` through `5`
+- `approved: true`
+
+Account definitions live in `src/data/wardAdminAccounts.js`.
+
+---
+
+## Resetting Demo Data
+
+Use this when you want to remove old users, projects, complaints, and registrations and start with a clean Itahari demo.
+
+> **Important:** Firebase Authentication users **cannot** be deleted safely from the frontend client. You must delete them manually from **Firebase Console → Authentication → Users**, or use the Firebase Admin SDK on a trusted server.
+
+### Step-by-step
+
+1. **Delete Firebase Auth users manually**  
+   Firebase Console → Authentication → Users → select and delete test accounts.
+
+2. **Clear Firestore demo collections**  
+   - Option A: Delete collections manually in Firebase Console  
+   - Option B: Open [`/dev-reset`](http://localhost:5173/dev-reset) during development (`npm run dev`)  
+   - Collections cleared: `users`, `wards`, `projects`, `payments`, `proofs`, `complaints`, `activityLogs`, `aiFeedback`, `bookmarks` (missing collections are skipped safely)
+
+3. **Delete Firebase Storage uploads manually**  
+   Firebase Console → Storage → remove uploaded proof/complaint files if needed.
+
+4. **Clear browser localStorage**  
+   Dev tools → Application → Local Storage → remove `wardwatch_*` keys,  
+   or use **Clear Local Demo Data** on `/dev-reset`.
+
+5. **Seed fresh Itahari data**  
+   On `/dev-reset`, click **Seed Fresh Itahari Demo Data** or **Reset and Seed Fresh Data**.  
+   Seeds 5 wards (Ward 1–5) and 10 projects with payments, proofs, and complaints.
+
+6. **Register new accounts**  
+   Create fresh citizen and ward admin users at `/register`. Ward admins are auto-approved in hackathon demo mode.
+
+### Dev reset page
+
+| Route | Availability |
+|-------|----------------|
+| `/dev-reset` | `import.meta.env.DEV` **or** `VITE_ENABLE_DEV_RESET=true` |
+
+**Never enable `VITE_ENABLE_DEV_RESET` in production** unless you intentionally want the reset UI exposed.
+
+Services: `src/services/resetService.js`, `src/services/seedService.js`
 
 ---
 
@@ -277,6 +361,7 @@ Recommended 5-minute walkthrough:
 | `/admin/upload-proof` | Upload proof |
 | `/admin/add-update` | Multi-step project update |
 | `/admin/complaints` | Review complaints |
+| `/dev-reset` | **Dev only** — clear/seed demo data |
 
 ---
 
@@ -286,7 +371,7 @@ Recommended 5-minute walkthrough:
 - **With Firebase:** Set all six `VITE_FIREBASE_*` vars. App loads wards/projects from Firestore; writes sync on admin actions.
 - **Fallback:** Missing env, empty Firestore, or fetch errors → seed data is used automatically.
 
-Firestore collections: `wards`, `projects`, `payments`, `proofs`, `complaints`, `users` (reserved).
+Firestore collections: `wards`, `projects`, `payments`, `proofs`, `complaints`, `users`, `activityLogs`, `aiFeedback`, `bookmarks`.
 
 Branding constants: `src/config/branding.js`
 

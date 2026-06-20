@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  User, Mail, Shield, Phone, Calendar, LogOut, MessageSquareHeart, FolderKanban, Briefcase, CheckCircle,
+  User, Mail, Shield, Phone, Calendar, LogOut, MessageSquareHeart, FolderKanban, Briefcase, CheckCircle, Bookmark,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
@@ -9,8 +9,13 @@ import Button from '../components/ui/Button';
 import { StatusBadge } from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import { formatDate } from '../utils/formatters';
-import { getAllComplaints } from '../utils/riskEngine';
-import { getComplaintCategoryLabel } from '../services/complaintService';
+import {
+  getComplaintCategoryLabel,
+  getComplaintsForUser,
+  countSubmittedComplaints,
+} from '../services/complaintService';
+import { getBookmarkedProjects } from '../services/bookmarkService';
+import { formatWardLabel } from '../constants/wards';
 import { ROLES } from '../services/authService';
 
 function ProfileField({ icon: Icon, label, value }) {
@@ -29,24 +34,24 @@ function ProfileField({ icon: Icon, label, value }) {
 
 export default function Profile() {
   const { profile, logout, isWardAdmin, isApprovedWardAdmin } = useAuth();
-  const { projects } = useData();
+  const { projects, publicProjects } = useData();
 
-  const myComplaints = useMemo(() => {
-    if (!profile || profile.role !== ROLES.PUBLIC) return [];
+  const isPublicCitizen = profile?.role === ROLES.PUBLIC;
 
-    return getAllComplaints(projects)
-      .filter((c) => {
-        if (c.submittedByUid && profile.uid) return c.submittedByUid === profile.uid;
-        if (profile.email && c.email) {
-          return c.email.toLowerCase() === profile.email.toLowerCase();
-        }
-        if (profile.fullName && c.citizenName) {
-          return c.citizenName.toLowerCase() === profile.fullName.toLowerCase();
-        }
-        return false;
-      })
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }, [projects, profile]);
+  const myComplaints = useMemo(
+    () => (isPublicCitizen ? getComplaintsForUser(profile, projects) : []),
+    [isPublicCitizen, profile, projects],
+  );
+
+  const submittedCount = useMemo(
+    () => (isPublicCitizen ? countSubmittedComplaints(profile, projects) : 0),
+    [isPublicCitizen, profile, projects],
+  );
+
+  const bookmarkedProjects = useMemo(
+    () => (isPublicCitizen && profile?.uid ? getBookmarkedProjects(profile.uid, publicProjects) : []),
+    [isPublicCitizen, profile, publicProjects],
+  );
 
   const roleLabel = isWardAdmin ? 'Ward IT/Admin' : 'Public Citizen';
 
@@ -67,8 +72,9 @@ export default function Profile() {
               Profile
             </h1>
             <p className="text-slate-500 mt-2 max-w-xl leading-relaxed">
-              Manage your WardWatch Itahari account
-              {profile?.role === ROLES.PUBLIC ? ' and view complaints you have submitted.' : '.'}
+              {isPublicCitizen
+                ? 'Your citizen account details, submitted complaints, and saved projects.'
+                : 'Manage your WardWatch Itahari ward admin account.'}
             </p>
           </div>
           <Button variant="secondary" size="sm" icon={LogOut} onClick={handleLogout}>
@@ -94,21 +100,44 @@ export default function Profile() {
               </div>
 
               <div className="space-y-3">
+                <ProfileField icon={User} label="Full name" value={profile?.fullName} />
                 <ProfileField icon={Mail} label="Email" value={profile?.email} />
-                <ProfileField icon={Shield} label="Role" value={roleLabel} />
-                {profile?.wardNo && (
+                <ProfileField icon={Phone} label="Phone" value={profile?.phone} />
+                {isPublicCitizen && (
+                  <>
+                    <ProfileField
+                      icon={FolderKanban}
+                      label="Ward number"
+                      value={profile?.wardNo ? formatWardLabel(profile.wardNo) : 'Not set'}
+                    />
+                    <ProfileField icon={Shield} label="Role" value={roleLabel} />
+                  </>
+                )}
+                {!isPublicCitizen && !isWardAdmin && (
+                  <ProfileField icon={Shield} label="Role" value={roleLabel} />
+                )}
+                {isPublicCitizen && (
                   <ProfileField
-                    icon={FolderKanban}
-                    label="Ward number"
-                    value={`Ward ${profile.wardNo}`}
+                    icon={MessageSquareHeart}
+                    label="Submitted complaints"
+                    value={String(submittedCount)}
                   />
                 )}
                 {isWardAdmin && (
                   <>
                     <ProfileField
+                      icon={FolderKanban}
+                      label="Ward number"
+                      value={profile?.wardNo ? formatWardLabel(profile.wardNo) : 'Not assigned'}
+                    />
+                    <ProfileField icon={Shield} label="Role" value={roleLabel} />
+                    <p className="text-xs text-slate-500 px-1">
+                      Role and ward assignment are managed by municipality records and cannot be changed here.
+                    </p>
+                    <ProfileField
                       icon={CheckCircle}
                       label="Status"
-                      value={profile?.approved ? 'Approved' : 'Pending'}
+                      value={profile?.approved ? 'Approved' : 'Pending approval'}
                     />
                     {profile?.positionTitle && (
                       <ProfileField icon={Briefcase} label="Position" value={profile.positionTitle} />
@@ -117,9 +146,6 @@ export default function Profile() {
                       <ProfileField icon={Shield} label="Municipality" value={profile.municipality} />
                     )}
                   </>
-                )}
-                {profile?.phone && (
-                  <ProfileField icon={Phone} label="Phone" value={profile.phone} />
                 )}
                 <ProfileField
                   icon={Calendar}
@@ -138,8 +164,8 @@ export default function Profile() {
             </div>
           </div>
 
-          {profile?.role === ROLES.PUBLIC && (
-            <div className="lg:col-span-2">
+          {isPublicCitizen && (
+            <div className="lg:col-span-2 space-y-8">
               <div className="rounded-2xl border border-slate-200/90 bg-white overflow-hidden card-shadow">
                 <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-brand-50/60 to-slate-50 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -148,7 +174,9 @@ export default function Profile() {
                     </div>
                     <div>
                       <h2 className="text-sm font-semibold text-slate-900">My submitted complaints</h2>
-                      <p className="text-xs text-slate-500 mt-0.5">Feedback linked to your account</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {submittedCount} complaint{submittedCount !== 1 ? 's' : ''} linked to your account
+                      </p>
                     </div>
                   </div>
                   <Link to="/complaints">
@@ -170,40 +198,81 @@ export default function Profile() {
                     />
                   ) : (
                     <div className="space-y-4">
-                      {myComplaints.map((complaint) => {
-                        const project = projects.find((p) => p.id === complaint.projectId);
-
-                        return (
-                          <article
-                            key={`${complaint.projectId}-${complaint.id || complaint.createdAt}`}
-                            className="rounded-xl border border-slate-200 p-4 hover:border-slate-300 transition-colors"
+                      {myComplaints.map((complaint) => (
+                        <article
+                          key={`${complaint.projectId}-${complaint.id || complaint.createdAt}`}
+                          className="rounded-xl border border-slate-200 p-4 hover:border-slate-300 transition-colors"
+                        >
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <StatusBadge status={complaint.status} />
+                            <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                              {getComplaintCategoryLabel(complaint.category)}
+                            </span>
+                            <span className="text-xs text-slate-400 ml-auto">
+                              {formatDate(complaint.createdAt)}
+                            </span>
+                          </div>
+                          <Link
+                            to={`/projects/${complaint.projectId}`}
+                            className="text-sm font-semibold text-brand-700 hover:underline"
                           >
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <StatusBadge status={complaint.status} />
-                              <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                                {getComplaintCategoryLabel(complaint.category)}
-                              </span>
-                              <span className="text-xs text-slate-400 ml-auto">
-                                {formatDate(complaint.createdAt)}
-                              </span>
-                            </div>
-                            {project && (
-                              <Link
-                                to={`/projects/${complaint.projectId}`}
-                                className="text-sm font-semibold text-brand-700 hover:underline"
-                              >
-                                {project.title}
-                              </Link>
-                            )}
-                            <p className="text-sm text-slate-600 mt-2 leading-relaxed line-clamp-3">
-                              {complaint.message}
-                            </p>
-                            {project && (
-                              <p className="text-xs text-slate-400 mt-2">Ward {project.wardNo}</p>
-                            )}
-                          </article>
-                        );
-                      })}
+                            {complaint.projectTitle || 'Project'}
+                          </Link>
+                          <p className="text-sm text-slate-600 mt-2 leading-relaxed line-clamp-3">
+                            {complaint.message}
+                          </p>
+                          {complaint.wardNo && (
+                            <p className="text-xs text-slate-400 mt-2">{formatWardLabel(complaint.wardNo)}</p>
+                          )}
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200/90 bg-white overflow-hidden card-shadow">
+                <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-amber-50/60 to-slate-50">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-amber-100 text-amber-700">
+                      <Bookmark className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-semibold text-slate-900">My bookmarked projects</h2>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Projects you saved from project pages
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  {bookmarkedProjects.length === 0 ? (
+                    <EmptyState
+                      icon={Bookmark}
+                      title="No bookmarks yet"
+                      description="Open any project and tap Save project to track it here."
+                      action={(
+                        <Link to="/projects">
+                          <Button variant="secondary" size="sm">Browse projects</Button>
+                        </Link>
+                      )}
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      {bookmarkedProjects.map((project) => (
+                        <Link
+                          key={project.id}
+                          to={`/projects/${project.id}`}
+                          className="flex items-center justify-between gap-3 p-4 rounded-xl border border-slate-200 hover:border-brand-200 hover:bg-brand-50/30 transition-colors"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 truncate">{project.title}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">{formatWardLabel(project.wardNo)}</p>
+                          </div>
+                          <span className="text-xs font-medium text-brand-700 shrink-0">View →</span>
+                        </Link>
+                      ))}
                     </div>
                   )}
                 </div>

@@ -5,7 +5,8 @@ import { StatusBadge, RiskLevelBadge } from '../ui/Badge';
 import ProgressBar from '../ui/ProgressBar';
 import TrustScoreRing from '../ui/TrustScoreRing';
 import { RiskFlagList } from '../ui/RiskFlag';
-import { formatCompactCurrency } from '../../utils/formatters';
+import { formatCompactCurrency, getWardByNo } from '../../utils/formatters';
+import { formatWardLabel } from '../../constants/wards';
 import {
   calculateTrustScore,
   getRiskFlags,
@@ -13,7 +14,6 @@ import {
   getTotalPaid,
   getBudgetUsedPercent,
 } from '../../utils/riskEngine';
-import { getWardByNo } from '../../utils/formatters';
 
 export default function ProjectCard({ project, wards, compact = false }) {
   const trustScore = calculateTrustScore(project);
@@ -38,7 +38,7 @@ export default function ProjectCard({ project, wards, compact = false }) {
           {ward && (
             <p className="flex items-center gap-1 text-xs text-slate-500 mt-1">
               <MapPin className="h-3 w-3" />
-              Ward {ward.number} — {ward.name}
+              {formatWardLabel(ward.number)}
             </p>
           )}
         </div>

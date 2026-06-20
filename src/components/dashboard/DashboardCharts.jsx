@@ -32,6 +32,38 @@ function ChartContainer({ children, empty, emptyMessage }) {
   );
 }
 
+export function BudgetByWardChart({ wards, projects }) {
+  const data = wards.map((ward) => {
+    const wardProjects = projects.filter((p) => p.wardNo === ward.number);
+    const budget = wardProjects.reduce((s, p) => s + (p.allocatedBudget ?? 0), 0);
+    return {
+      name: `Ward ${ward.number}`,
+      budget,
+    };
+  }).filter((d) => d.budget > 0);
+
+  return (
+    <Card className="min-w-0">
+      <CardHeader title="Budget by Ward" subtitle="Published project budget by ward" />
+      <ChartContainer
+        empty={data.length === 0}
+        emptyMessage="No published budget data yet."
+      >
+        <BarChart data={data.length ? data : wards.map((w) => ({ name: `Ward ${w.number}`, budget: 0 }))} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} />
+          <YAxis tickFormatter={(v) => formatCompactCurrency(v)} tick={{ fontSize: 11, fill: '#64748b' }} />
+          <Tooltip
+            formatter={(value) => formatCompactCurrency(value)}
+            contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 13 }}
+          />
+          <Bar dataKey="budget" name="Published Budget" fill="#1e40af" radius={[6, 6, 0, 0]} />
+        </BarChart>
+      </ChartContainer>
+    </Card>
+  );
+}
+
 export function BudgetByCategoryPieChart({ projects }) {
   const categoryMap = {};
   projects.forEach((p) => {
