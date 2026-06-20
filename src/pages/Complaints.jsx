@@ -112,6 +112,7 @@ export default function Complaints() {
   const [form, setForm] = useState({
     ...EMPTY_COMPLAINT_FORM,
     projectId: searchParams.get('project') || '',
+    wardNo: '',
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -127,8 +128,35 @@ export default function Complaints() {
     };
   }, [form, profile]);
 
+  const wadaList = useMemo(
+    () => wards.filter((w) => w.number >= 1 && w.number <= 5).sort((a, b) => a.number - b.number),
+    [wards],
+  );
+
+  const selectedWardNo = useMemo(() => {
+    if (form.wardNo) return form.wardNo;
+    if (form.projectId) {
+      const project = projects.find((p) => p.id === form.projectId);
+      return project?.wardNo ? String(project.wardNo) : '';
+    }
+    return '';
+  }, [form.wardNo, form.projectId, projects]);
+
+  const wadaProjects = useMemo(() => {
+    const inWadaRange = projects.filter((p) => p.wardNo >= 1 && p.wardNo <= 5);
+    if (!selectedWardNo) return [];
+    return inWadaRange
+      .filter((p) => p.wardNo === Number(selectedWardNo))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [projects, selectedWardNo]);
+
   const complaints = useMemo(
-    () => getAllComplaints(projects).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+    () => getAllComplaints(projects)
+      .filter((c) => {
+        const project = projects.find((p) => p.id === c.projectId);
+        return project && project.wardNo >= 1 && project.wardNo <= 5;
+      })
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
     [projects],
   );
 
@@ -137,7 +165,16 @@ export default function Complaints() {
   ).length;
 
   const update = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === 'wardNo') {
+        const stillValid = projects.some(
+          (p) => p.id === prev.projectId && p.wardNo === Number(value),
+        );
+        if (!stillValid) next.projectId = '';
+      }
+      return next;
+    });
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
@@ -148,7 +185,7 @@ export default function Complaints() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validation = validateComplaintForm(displayForm);
+    const validation = validateComplaintForm({ ...displayForm, wardNo: selectedWardNo });
     if (!validation.valid) {
       setErrors(validation.errors);
       return;
@@ -165,7 +202,7 @@ export default function Complaints() {
       setSubmitted(true);
       setForm({
         ...EMPTY_COMPLAINT_FORM,
-        projectId: form.projectId,
+        wardNo: form.wardNo,
         ...(profile ? {
           citizenName: profile.fullName || '',
           email: profile.email || '',
@@ -237,6 +274,26 @@ export default function Complaints() {
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                   <div>
+                    <label htmlFor="wardNo" className="block text-sm font-medium text-slate-700 mb-1">
+                      Wada <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="wardNo"
+                      value={selectedWardNo}
+                      onChange={(e) => update('wardNo', e.target.value)}
+                      className={inputClass(errors.wardNo)}
+                    >
+                      <option value="">Select wada (1–5)</option>
+                      {wadaList.map((w) => (
+                        <option key={w.id} value={w.number}>
+                          Wada {w.number} — {w.name}
+                        </option>
+                      ))}
+                    </select>
+                    <FieldError message={errors.wardNo} />
+                  </div>
+
+                  <div>
                     <label htmlFor="projectId" className="block text-sm font-medium text-slate-700 mb-1">
                       Project <span className="text-red-500">*</span>
                     </label>
@@ -245,11 +302,14 @@ export default function Complaints() {
                       value={form.projectId}
                       onChange={(e) => update('projectId', e.target.value)}
                       className={inputClass(errors.projectId)}
+                      disabled={!selectedWardNo}
                     >
-                      <option value="">Select a ward project</option>
-                      {projects.map((p) => (
+                      <option value="">
+                        {selectedWardNo ? 'Select a project in this wada' : 'Choose wada first'}
+                      </option>
+                      {wadaProjects.map((p) => (
                         <option key={p.id} value={p.id}>
-                          Ward {p.wardNo} — {p.title}
+                          {p.title}
                         </option>
                       ))}
                     </select>

@@ -1,74 +1,150 @@
 # WardWatch Itahari
 
-**Public Money, Public Visibility** — a civic-tech platform for Itahari ward-level budget transparency, project tracking, and citizen accountability.
+**Tagline:** Public Money, Public Visibility
 
-Demo data: **Itahari Sub-Metropolitan City Demo** (Koshi Province, Nepal) — FY 2081/82 Demo — 5 wards, 10 public projects.
+A civic-tech hackathon MVP that makes Itahari ward-level public spending transparent — budget, tenders, contractor payments, site proofs, citizen complaints, AI explanations, and on-site QR scans in one citizen-friendly portal.
+
+**Demo municipality:** Itahari Sub-Metropolitan City Demo (Koshi Province, Nepal) · FY 2081/82 · 5 wards · 10 public projects
+
+**Pitch deck (for judges):** [http://localhost:5173/pitch](http://localhost:5173/pitch)
 
 ---
 
 ## Problem Statement
 
-Local government spending is often opaque. Itahari citizens struggle to answer basic questions:
+Local government spending is often opaque. Citizens in Itahari — and across Nepal — struggle to answer basic accountability questions:
 
 - Where did the ward budget go?
 - Who won the tender and for how much?
 - Was payment released with proof of work?
 - Is the project on track or delayed?
 
-Information lives in PDFs, notice boards, or office files — not in a form citizens can search, verify, or question.
+Information lives in PDFs, notice boards, or office files — not in a searchable, verifiable form that ordinary citizens can use without visiting a ward office.
 
 ---
 
-## Solution
+## Proposed Solution
 
-WardWatch Itahari connects the full accountability chain in one public portal:
+**WardWatch Itahari** connects the full accountability chain in one public portal:
 
 **Budget → Tender → Contractor → Payment → Proof → Citizen Feedback**
 
-Ward IT and admin teams use an admin portal to upload official updates. Citizens use a public dashboard, project pages, QR site scans, and an AI query bot — all backed by a transparency score and governance risk flags.
+Ward officials publish official updates through an admin portal. Citizens track spending on a simplified dashboard, project pages, QR site scans, and an AI query bot — backed by transparency trust scores and governance risk flags.
 
 ### How it works
 
-1. **Ward publishes** budget and project details  
-2. **Citizens track** payments, proof, and progress  
-3. **AI flags risks** and explains data in simple language  
+1. **Ward publishes** — budget, tender, payment, and proof records go live  
+2. **Citizens track** — dashboard, QR scan, or project pages (no login required)  
+3. **AI flags risks** — plain-language alerts when something needs a closer look  
 
 ---
 
-## Features
+## Key Features
 
 | Area | Capability |
 |------|------------|
-| **Public dashboard** | Itahari KPIs, ward filters, budget charts, risk alerts, recent updates |
-| **Project registry** | Search, filter, sort; trust score and status badges on every card |
-| **Project detail** | Budget, payments, proofs, timeline, contractor, QR code, AI summary |
-| **Governance risk detector** | 0–100 transparency score, red-flag explanations |
-| **Citizen query bot** | Natural-language Q&A (English + Roman Nepali) over public data |
-| **Citizen feedback** | Complaint form with file upload + public feedback board |
+| **Public dashboard** | 4 KPI cards, ward overview, top risk alerts, latest updates, citizen action shortcuts |
+| **Project registry** | Search, filter, sort by ward/status/risk; trust score on every card |
+| **Project detail** | Budget, payments, proofs, timeline, contractor, QR code, AI summary, risk panel |
+| **Governance risk detector** | 0–100 trust score + red-flag explanations (payment-without-proof, delays, etc.) |
+| **Citizen feedback** | Wada 1–5 selector, complaint form with file upload, public feedback board |
 | **Live QR scan** | Mobile-friendly project view at `/scan/:id` |
-| **Admin portal** | Add projects, payments, proofs, updates; review complaints |
+| **Admin portal** | Add projects, payments, proofs, updates; review complaints (ward admin role) |
+| **Auth & roles** | Citizen and ward admin demo accounts; Firebase Auth or local fallback |
 | **Firebase-ready** | Optional Firestore sync; **local seed data fallback** when env vars are missing |
+
+---
+
+## AI Features
+
+| Feature | Description |
+|---------|-------------|
+| **Citizen Query Bot** (`/ask`) | Natural-language Q&A in English and Roman Nepali over public ward data |
+| **AI Project Summary** | Plain-language transparency brief on each project detail page |
+| **Governance Risk Engine** | Rule-based detection: budget-progress mismatch, payment without proof, delays, tender overrun |
+| **Trust Score (0–100)** | Single citizen-friendly metric derived from payments, proofs, complaints, and flags |
+| **Gemini integration (optional)** | Set `VITE_AI_API_KEY` for live AI summaries; local fallback works without it |
+
+**Try asking:** *"Where did Ward 3 budget go?"* or *"Ward 2 ko budget kaha kharcha bhayo?"*
+
+---
+
+## QR Wow Demo
+
+Construction sites can display a QR code that opens live project data on any phone — no app install.
+
+| Step | Action |
+|------|--------|
+| 1 | Open `/qr-demo/proj-ith-01` on laptop (shows QR + instructions) |
+| 2 | Scan with phone camera |
+| 3 | Mobile view opens at `/scan/proj-ith-01` with budget, payments, proof & trust score |
+
+**Phone testing:** Set `VITE_PUBLIC_URL=http://YOUR_LAN_IP:5173` in `.env` — localhost URLs do not work on phones.
 
 ---
 
 ## Tech Stack
 
-- **Frontend:** React 19, Vite 8, React Router 7
-- **Styling:** Tailwind CSS v4
-- **Charts:** Recharts
-- **Icons:** lucide-react
-- **QR:** qrcode.react
-- **Data:** Local seed JSON + React Context; optional **Firebase Firestore**
-- **AI (optional):** Google Gemini via `VITE_AI_API_KEY` for project summaries
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 19, Vite 8, React Router 7 |
+| Styling | Tailwind CSS v4 |
+| Charts | Recharts |
+| Icons | lucide-react |
+| QR codes | qrcode.react |
+| Data | Local seed JSON + React Context; optional Firebase Firestore |
+| Auth | Firebase Auth or localStorage fallback |
+| File upload | Firebase Storage or base64 local fallback |
+| AI (optional) | Google Gemini via `VITE_AI_API_KEY` |
 
 ---
 
-## How to Run
+## Project Structure
+
+```
+janata-ledger/
+├── src/
+│   ├── App.jsx                 # Routes
+│   ├── config/branding.js      # Product name, tagline, demo IDs
+│   ├── context/
+│   │   ├── AuthContext.jsx     # Auth state & roles
+│   │   └── DataContext.jsx     # Wards, projects, mutations
+│   ├── data/seedData.js        # Itahari demo data (5 wards, 10 projects)
+│   ├── pages/
+│   │   ├── Landing.jsx         # Marketing home
+│   │   ├── Pitch.jsx           # Hackathon pitch deck (/pitch)
+│   │   ├── PublicDashboard.jsx # Citizen dashboard
+│   │   ├── Projects.jsx        # Project listing
+│   │   ├── ProjectDetail.jsx   # Full project view
+│   │   ├── CitizenQueryBot.jsx # AI Q&A (/ask)
+│   │   ├── Complaints.jsx      # Citizen feedback
+│   │   ├── QrDemo.jsx          # QR presentation page
+│   │   ├── ProjectMobileScan.jsx # Post-scan mobile view
+│   │   └── admin/…             # Ward admin portal pages
+│   ├── components/
+│   │   ├── dashboard/          # KPI cards, ward cards, risk alerts
+│   │   ├── project/            # Budget, payments, proofs, AI panel
+│   │   ├── layout/             # Header, footer, nav
+│   │   └── ui/                 # Button, badge, file upload, etc.
+│   ├── services/               # Auth, complaints, uploads, Firebase
+│   └── utils/
+│       ├── riskEngine.js       # Trust score, ward stats, activity
+│       ├── corruptionRiskDetector.js
+│       ├── citizenQueryEngine.js
+│       └── aiSummary.js
+├── .env.example
+├── package.json
+└── README.md
+```
+
+---
+
+## How to Run Locally
 
 ### Prerequisites
 
-- Node.js 18+
-- npm
+- **Node.js** 18+
+- **npm**
 
 ### Install & start
 
@@ -77,25 +153,43 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+Open [http://localhost:5173](http://localhost:5173)
 
-For **phone QR testing** (LAN):
+### Production build
+
+```bash
+npm install
+npm run dev      # development
+npm run build    # production build → dist/
+npm run preview  # preview production build locally
+```
+
+### Lint
+
+```bash
+npm run lint
+```
+
+### Phone QR testing (LAN)
 
 ```bash
 npm run dev
-# Vite prints Network URL — set in .env:
-# VITE_PUBLIC_URL=http://YOUR_LAN_IP:5173
+# Note your PC's Wi‑Fi IPv4 (ipconfig on Windows)
+# Add to .env:
+# VITE_PUBLIC_URL=http://192.168.x.x:5173
 ```
 
-### Environment variables
+---
+
+## Environment Variables
 
 Copy `.env.example` to `.env`:
 
 ```env
-# Optional — AI summaries
+# Optional — AI summaries (Gemini)
 VITE_AI_API_KEY=
 
-# Optional — mobile QR base URL
+# Optional — mobile QR base URL (required for phone scanning on local network)
 VITE_PUBLIC_URL=http://192.168.x.x:5173
 
 # Optional — Firebase (app uses seed data if any value is missing)
@@ -107,48 +201,52 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
 ```
 
-### Production build
+> **Note:** The app runs fully offline with seed data when Firebase and AI keys are not set.
 
-```bash
-npm run build
-npm run preview
-```
+---
 
-### Lint
+## Demo Accounts
 
-```bash
-npm run lint
-```
+| Role | Email | Password |
+|------|-------|----------|
+| **Citizen** | `citizen@itahari.demo` | `demo123` |
+| **Ward Admin** | `admin@itahari.demo` | `demo123` |
+
+- Citizens can browse, ask AI, and submit complaints.  
+- Ward admins access `/admin` to add projects, post updates, and review complaints.
 
 ---
 
 ## Demo Flow (Hackathon / Judges)
 
-1. **Landing** — `/` — how it works, problem, features, QR wow-demo  
-2. **Dashboard** — `/dashboard` — Itahari Public Transparency Dashboard  
-3. **Projects** — `/projects` — filter by ward, status, risk  
-4. **Risk demo** — `/projects/proj-ith-02` — Ward 2 Drainage (governance risk panel)  
-5. **Citizen bot** — `/ask` — try: *"Where did Ward 3 budget go?"* or *"Ward 2 ko budget kaha kharcha bhayo?"*  
-6. **Complaints** — `/complaints` — submit feedback with optional photo/PDF  
-7. **QR mobile scan** — on phone: `{VITE_PUBLIC_URL}/scan/proj-ith-01`  
-8. **Admin** — `/admin` — add project, post payment/update, review complaints  
+Recommended 5-minute walkthrough:
+
+| # | Route | What to show |
+|---|-------|--------------|
+| 1 | `/pitch` | One-page pitch: problem → solution → AI → QR → impact |
+| 2 | `/dashboard` | Citizen-friendly summary: KPIs, wada overview, risk alerts |
+| 3 | `/projects/proj-ith-02` | Ward 2 Drainage — trust score + governance risk panel |
+| 4 | `/ask` | Citizen Query Bot — *"Show high risk projects in Itahari"* |
+| 5 | `/qr-demo/proj-ith-01` | QR wow demo — scan with phone |
+| 6 | `/complaints` | Submit feedback (Wada 1–5 → project) |
+| 7 | `/admin` | Login as ward admin — add payment or review complaint |
 
 ### Seed project IDs
 
-`proj-ith-01` … `proj-ith-10` — all resolve on the project detail page.
+`proj-ith-01` … `proj-ith-10`
 
-| ID | Project |
-|----|---------|
-| proj-ith-01 | Itahari Main Road Repair |
-| proj-ith-02 | Ward 2 Drainage Construction |
-| proj-ith-03 | Street Light Installation at Market Area |
-| proj-ith-04 | Community School Building Maintenance |
-| proj-ith-05 | Public Health Post Upgrade |
-| proj-ith-06 | Drinking Water Pipeline Extension |
-| proj-ith-07 | Waste Management Vehicle Purchase |
-| proj-ith-08 | Community Park Renovation |
-| proj-ith-09 | Footpath Construction Near Bazaar Area |
-| proj-ith-10 | Digital Ward Notice Board Installation |
+| ID | Project | Ward |
+|----|---------|------|
+| proj-ith-01 | Itahari Main Road Repair | 1 |
+| proj-ith-02 | Ward 2 Drainage Construction | 2 |
+| proj-ith-03 | Street Light Installation at Market Area | 4 |
+| proj-ith-04 | Community School Building Maintenance | 3 |
+| proj-ith-05 | Public Health Post Upgrade | 5 |
+| proj-ith-06 | Drinking Water Pipeline Extension | 5 |
+| proj-ith-07 | Waste Management Vehicle Purchase | 3 |
+| proj-ith-08 | Community Park Renovation | 2 |
+| proj-ith-09 | Footpath Construction Near Bazaar Area | 1 |
+| proj-ith-10 | Digital Ward Notice Board Installation | 5 |
 
 ---
 
@@ -157,15 +255,20 @@ npm run lint
 | Path | Description |
 |------|-------------|
 | `/` | Landing page |
-| `/dashboard` | Public dashboard |
-| `/projects` | Project listing |
+| `/pitch` | **Pitch Mode** — hackathon deck for judges |
+| `/dashboard` | Public transparency dashboard |
+| `/projects` | Project listing (supports `?ward=`) |
 | `/projects/:id` | Project detail |
 | `/projects/:id/qr-board` | Printable QR board |
-| `/scan/:id` | Mobile QR scan view |
+| `/qr-demo/:id` | QR presentation (scan instructions) |
+| `/scan/:id` | Mobile QR scan destination |
 | `/complaints` | Citizen feedback |
-| `/ask` | Citizen query bot |
-| `/admin` | Admin dashboard |
-| `/admin/add-project` | New project form |
+| `/ask` | Citizen Query Bot |
+| `/login` | Login |
+| `/register` | Register |
+| `/profile` | User profile (authenticated) |
+| `/admin` | Ward admin dashboard |
+| `/admin/add-project` | New project |
 | `/admin/add-payment` | Record payment |
 | `/admin/upload-proof` | Upload proof |
 | `/admin/add-update` | Multi-step project update |
@@ -181,22 +284,31 @@ npm run lint
 
 Firestore collections: `wards`, `projects`, `payments`, `proofs`, `complaints`, `users` (reserved).
 
-Branding constants live in `src/config/branding.js`.
+Branding constants: `src/config/branding.js`
 
 ---
 
 ## Future Scope
 
-- Firebase Authentication for ward officials and role-based access  
-- Firebase Storage for complaint/proof file uploads (replacing base64)  
-- SMS / notification alerts for citizens and admins  
-- Multi-municipality support and Nepali UI (Devanagari)  
-- Integration with government open-data APIs  
+- Nepali UI (Devanagari) and SMS/notification alerts for citizens and admins  
+- Multi-municipality support and province-level dashboards  
+- Integration with government open-data and tender APIs  
 - Offline PWA for field QR scans in low connectivity  
 - Audit log export and PDF ward transparency reports  
+- Blockchain-anchored proof timestamps (research phase)  
+
+---
+
+## Team Notes
+
+- **Built for:** Civic-tech / gov-tech hackathons focused on local transparency in Nepal  
+- **Design principle:** Summary first, details later — citizens should understand the platform in under 5 seconds  
+- **Demo data:** Fictional Itahari ward records for presentation only — not affiliated with Itahari Sub-Metropolitan City  
+- **Offline-first:** Judges can run the full demo without API keys or internet after `npm install`  
+- **Pitch URL:** Share `/pitch` with judges before the live demo for a quick overview  
 
 ---
 
 ## License
 
-Hackathon MVP — demo use. Not affiliated with Itahari Sub-Metropolitan City.
+Hackathon MVP — demo use only. Not an official government product.

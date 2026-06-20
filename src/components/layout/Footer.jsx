@@ -50,6 +50,7 @@ export default function Footer() {
           <div>
             <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4">Demo</h4>
             <ul className="space-y-2.5 text-sm text-slate-600">
+              <li><Link to="/pitch" className="hover:text-brand-800 transition-colors">Pitch Mode</Link></li>
               <li><Link to={`/qr-demo/${DEMO_PROJECT_IDS.qrScan}`} className="hover:text-brand-800 transition-colors">Scan QR Demo</Link></li>
               <li><Link to={`/projects/${DEMO_PROJECT_IDS.drainage}`} className="hover:text-brand-800 transition-colors">Risk Demo Project</Link></li>
             </ul>

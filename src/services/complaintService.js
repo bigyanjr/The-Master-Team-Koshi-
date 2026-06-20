@@ -34,6 +34,7 @@ export const EMPTY_COMPLAINT_FORM = {
 export function validateComplaintForm(form) {
   const errors = {};
 
+  if (!form.wardNo) errors.wardNo = 'Please select a wada';
   if (!form.projectId) errors.projectId = 'Please select a project';
   if (!form.category) errors.category = 'Please select a category';
   if (!form.message?.trim()) errors.message = 'Please describe your concern';

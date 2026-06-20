@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { PRODUCT_NAME, MUNICIPALITY_DEMO } from '../config/branding';
+import { MUNICIPALITY_DEMO } from '../config/branding';
 import { Link } from 'react-router-dom';
 import { Bot, Send, User, Sparkles, Shield, Zap, Globe } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
-import { answerCitizenQuery, SUGGESTED_QUESTIONS } from '../utils/citizenQueryEngine';
+import { SUGGESTED_QUESTIONS } from '../utils/citizenQueryEngine';
+import { respondAsWardMitra } from '../ai/wardMitraResponder';
+import { WARD_MITRA_INTRO, WARD_MITRA_NAME } from '../ai/wardMitraConfig';
 
 function ChatMessage({ role, content, timestamp }) {
   const isBot = role === 'bot';
@@ -44,7 +47,7 @@ function TypingIndicator() {
           <span className="h-2 w-2 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: '0ms' }} />
           <span className="h-2 w-2 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: '150ms' }} />
           <span className="h-2 w-2 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-          <span className="text-xs text-slate-400 ml-2">Searching public records…</span>
+          <span className="text-xs text-slate-400 ml-2">{WARD_MITRA_NAME} is thinking…</span>
         </div>
       </div>
     </div>
@@ -53,10 +56,11 @@ function TypingIndicator() {
 
 export default function CitizenQueryBot() {
   const { projects, wards } = useData();
+  const { profile } = useAuth();
   const [messages, setMessages] = useState([
     {
       role: 'bot',
-      content: `Namaste! I'm ${PRODUCT_NAME} AI — your Itahari civic transparency assistant.\n\nAsk about ward budgets, delayed projects, contractors, payments, or risk flags. Try English or Roman Nepali:\n• "Where did Ward 3 budget go?"\n• "Ward 2 ko budget kaha kharcha bhayo?"\n• "Show high risk projects in Itahari"`,
+      content: `${WARD_MITRA_INTRO}\n\nTry English or Roman Nepali:\n• "Where did Ward 3 budget go?"\n• "Ward 2 ko budget kaha kharcha bhayo?"\n• "Show high risk projects"`,
       timestamp: 'Just now',
     },
   ]);
@@ -78,7 +82,12 @@ export default function CitizenQueryBot() {
     setTyping(true);
 
     setTimeout(() => {
-      const answer = answerCitizenQuery(q, projects, wards);
+      const { answer } = respondAsWardMitra({
+        question: q,
+        userProfile: profile,
+        projects,
+        wards,
+      });
       setMessages((prev) => [...prev, { role: 'bot', content: answer, timestamp: time }]);
       setTyping(false);
     }, 650);
@@ -94,10 +103,10 @@ export default function CitizenQueryBot() {
             AI-Powered · Local Data · Instant Answers
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            Ask about Itahari ward projects
+            Ask {WARD_MITRA_NAME}
           </h1>
           <p className="text-slate-500 mt-3 max-w-xl mx-auto leading-relaxed">
-            Ask simple questions about Itahari ward spending — answers come from public project records on {MUNICIPALITY_DEMO}.
+            Your Itahari civic assistant — answers from public project records on {MUNICIPALITY_DEMO}.
           </p>
         </div>
 
@@ -109,10 +118,10 @@ export default function CitizenQueryBot() {
                 <Bot className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-semibold text-sm">{PRODUCT_NAME} Assistant</p>
+                <p className="font-semibold text-sm">{WARD_MITRA_NAME}</p>
                 <p className="text-xs text-slate-300 flex items-center gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Online · {projects.length} projects indexed
+                  WardWatch Itahari · {projects.length} projects indexed
                 </p>
               </div>
             </div>

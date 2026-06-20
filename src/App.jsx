@@ -20,6 +20,7 @@ import CitizenQueryBot from './pages/CitizenQueryBot';
 import ProjectQRBoard from './pages/ProjectQRBoard';
 import ProjectMobileScan from './pages/ProjectMobileScan';
 import QrDemo from './pages/QrDemo';
+import Pitch from './pages/Pitch';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
@@ -31,6 +32,7 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route index element={<Landing />} />
+            <Route path="pitch" element={<Pitch />} />
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
             <Route path="scan/:id" element={<ProjectMobileScan />} />
