@@ -113,7 +113,7 @@ const futureItems = [
 
 function SectionLabel({ children }) {
   return (
-    <p className="text-[11px] font-bold uppercase tracking-widest text-brand-600 mb-2">
+    <p className="text-xs font-bold uppercase tracking-widest text-brand-600 mb-2">
       {children}
     </p>
   );
@@ -232,7 +232,7 @@ export default function Pitch() {
                     <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-sm text-brand-800">
                       <Icon className="h-5 w-5" />
                     </div>
-                    <span className="text-[11px] font-bold text-slate-600 text-center">{label}</span>
+                    <span className="text-xs font-bold text-slate-600 text-center">{label}</span>
                   </div>
                   {i < flow.length - 1 && (
                     <ChevronRight className="h-4 w-4 text-slate-300 hidden sm:block shrink-0" />

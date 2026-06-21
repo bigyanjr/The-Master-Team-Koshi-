@@ -57,7 +57,7 @@ export default function DashboardKPIs({ projects }) {
           <div className={`inline-flex p-2 rounded-lg ${iconBg} mb-3 w-fit`}>
             <Icon className="h-5 w-5" />
           </div>
-          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide leading-snug dark:text-slate-400">{t(labelKey)}</p>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide leading-snug dark:text-slate-400">{t(labelKey)}</p>
           <p className="text-2xl sm:text-3xl font-extrabold mt-1 tabular-nums text-brand-950 dark:text-red-400">
             {values[key]}
           </p>

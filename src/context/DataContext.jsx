@@ -2,10 +2,13 @@ import {
   createContext, useContext, useState, useCallback, useMemo, useEffect, useRef,
 } from 'react';
 import { getInitialAppData } from '../config/demoSeed';
-import { getAllComplaints, getAllPayments } from '../utils/riskEngine';
+import { getAllComplaints, getAllPayments, aggregateWardStats } from '../utils/riskEngine';
 import { getPublicProjects } from '../utils/projectVisibility';
 import { isFirebaseConfigured } from '../firebase/config';
-import { bindLocalStore } from '../services/localStore';
+import {
+  bindLocalStore, readPersistedAppData, writePersistedAppData, PERSISTED_DATA_KEY,
+} from '../services/localStore';
+import { pushLiveSync } from '../services/liveSyncService';
 import {
   getProjects,
   addProject as addProjectService,
@@ -14,6 +17,11 @@ import {
   updateProjectProgress,
 } from '../services/projectService';
 import { getWards } from '../services/wardService';
+import {
+  getWardBudgets,
+  upsertWardBudget as upsertWardBudgetService,
+  getLatestWardBudget,
+} from '../services/wardBudgetService';
 import {
   addComplaint as addComplaintService,
   updateComplaintStatus as updateComplaintStatusService,
@@ -40,7 +48,12 @@ const DataContext = createContext(null);
 
 export const DEMO_ADMIN_WARD = 1;
 
-const initialData = getInitialAppData();
+// Rehydrate from whatever an admin already saved locally (same browser,
+// any tab) before falling back to the demo seed / empty state. See the
+// root-cause note in services/localStore.js — without this, a page refresh
+// or a second tab always started from scratch and admin-added data looked
+// like it had "disappeared".
+const initialData = readPersistedAppData() ?? getInitialAppData();
 
 export function DataProvider({ children }) {
   const [data, setData] = useState(initialData);
@@ -50,9 +63,54 @@ export function DataProvider({ children }) {
     dataRef.current = data;
   }, [data]);
 
+  // Persist every change (project/payment/proof/complaint/update/budget edit
+  // all flow through `setData`) so the citizen dashboard — even in a fresh
+  // tab or after a refresh — reads the same data the admin just published.
+  useEffect(() => {
+    writePersistedAppData(data);
+  }, [data]);
+
+  // Also push to the dev-server live-sync endpoint (see liveSyncService.js)
+  // so a QR already open on a *different device* (a phone with no access
+  // to this browser's localStorage) can pick up the change too — that's
+  // what makes scans update without re-scanning. Best-effort: no-ops
+  // harmlessly outside the Vite dev server (e.g. a production build).
+  useEffect(() => {
+    pushLiveSync(data);
+  }, [data]);
+
+  // ROOT CAUSE (stale QR / "still has same" bug): each browser tab keeps its
+  // own React state, hydrated once from localStorage at mount. The write
+  // above keeps storage current, but nothing told an *already-open* tab
+  // (e.g. one previewing a project's QR code) that a different tab just
+  // added a payment or project — so it kept rendering whatever it loaded at
+  // mount, and any QR generated from it stayed stale. The browser's native
+  // `storage` event fires in every other tab whenever localStorage changes,
+  // so listening for it here keeps every open tab of this app in sync
+  // without needing a manual refresh.
+  useEffect(() => {
+    function handleStorageSync(event) {
+      if (event.key !== PERSISTED_DATA_KEY || !event.newValue) return;
+      const fresh = readPersistedAppData();
+      if (fresh) setData(fresh);
+    }
+    window.addEventListener('storage', handleStorageSync);
+    return () => window.removeEventListener('storage', handleStorageSync);
+  }, []);
+
   const [adminActivity, setAdminActivity] = useState([]);
+  const [wardBudgets, setWardBudgets] = useState([]);
   const [dataLoading, setDataLoading] = useState(isFirebaseConfigured());
   const firebaseEnabled = isFirebaseConfigured();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const budgets = await getWardBudgets();
+      if (!cancelled) setWardBudgets(budgets);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     bindLocalStore({
@@ -343,6 +401,60 @@ export function DataProvider({ children }) {
     });
   }, [logActivity]);
 
+  const saveWardBudget = useCallback(async (payload, actor = {}) => {
+    const record = await upsertWardBudgetService({
+      ...payload,
+      createdBy: actor.uid ?? payload.createdBy ?? null,
+    });
+    setWardBudgets((prev) => {
+      const next = prev.filter((b) => b.id !== record.id);
+      next.push(record);
+      return next;
+    });
+    logActivity({
+      type: 'budget',
+      title: 'Ward budget updated',
+      detail: `${record.fiscalYear} — ${record.totalAllocatedBudget}`,
+      wardNo: record.wardNo,
+      userId: actor.uid ?? null,
+    });
+    return record;
+  }, [logActivity]);
+
+  /**
+   * Single source of truth for ward budget numbers — used by both the admin
+   * dashboard and the citizen dashboard so they never show different figures.
+   */
+  const getWardBudgetSummary = useCallback((wardNo) => {
+    const publicProjects = getPublicProjects(dataRef.current.projects);
+    const stats = aggregateWardStats(Number(wardNo), publicProjects);
+    const budgetRecord = getLatestWardBudget(wardBudgets, wardNo);
+    const totalAllocatedBudget = budgetRecord?.totalAllocatedBudget ?? 0;
+    const wardExpenditure = stats.totalSpent;
+    const remainingBudget = Math.max(0, totalAllocatedBudget - wardExpenditure);
+    const spentPercentage = totalAllocatedBudget > 0
+      ? Math.min(100, Math.round((wardExpenditure / totalAllocatedBudget) * 100))
+      : 0;
+
+    return {
+      budgetRecord,
+      isPublished: Boolean(budgetRecord),
+      totalAllocatedBudget,
+      wardExpenditure,
+      remainingBudget,
+      projectCount: stats.projectCount,
+      spentPercentage,
+    };
+    // `data` (projects/payments) is read via dataRef.current above so this
+    // stays correct even mid-render, but it must still be a dependency here
+    // so the function's identity changes whenever projects change — otherwise
+    // components that memoize on this callback (e.g. `useMemo(() =>
+    // getWardBudgetSummary(wardNo), [getWardBudgetSummary, wardNo])`) would
+    // keep returning a stale expenditure/remaining figure after a new
+    // payment is posted, until wardBudgets happened to change too.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wardBudgets, data]);
+
   const applyFreshSeed = useCallback((freshSeed) => {
     setData(freshSeed);
     setAdminActivity([]);
@@ -380,6 +492,9 @@ export function DataProvider({ children }) {
       payments: getAllPayments(publicProjects),
       complaints: getAllComplaints(publicProjects),
       adminActivity,
+      wardBudgets,
+      saveWardBudget,
+      getWardBudgetSummary,
       demoAdminWard: DEMO_ADMIN_WARD,
       firebaseEnabled,
       dataLoading,
@@ -399,6 +514,9 @@ export function DataProvider({ children }) {
   }, [
     data,
     adminActivity,
+    wardBudgets,
+    saveWardBudget,
+    getWardBudgetSummary,
     firebaseEnabled,
     dataLoading,
     addProject,

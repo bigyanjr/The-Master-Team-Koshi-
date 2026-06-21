@@ -54,7 +54,7 @@ function StepIndicator({ currentStep }) {
                     : 'bg-slate-100 text-slate-400'
               }`}
             >
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${
                 active ? 'bg-white/20' : done ? 'bg-emerald-200' : 'bg-slate-200'
               }`}>
                 {done ? '✓' : step.id}

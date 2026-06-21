@@ -1,4 +1,5 @@
-import { answerCitizenQuery, NO_PUBLIC_PROJECTS_MESSAGE } from '../utils/citizenQueryEngine';
+import { NO_PUBLIC_PROJECTS_MESSAGE } from '../utils/citizenQueryEngine';
+import { answerCitizenQueryWithRAG } from './wardMitraRAG';
 import {
   buildGreeting,
   IDENTITY_ANSWER,
@@ -10,10 +11,10 @@ import { detectDefinitionTopic, detectWardMitraIntent } from './wardMitraIntents
 import { getDefinitionAnswer } from './wardMitraKnowledgeBase';
 
 /**
- * @param {{ question: string, userProfile?: object|null, projects: array, wards: array }}
- * @returns {{ answer: string, intent: string, source: 'ward_mitra'|'knowledge_base'|'project_data'|'fallback' }}
+ * @param {{ question: string, userProfile?: object|null, projects: array, wards: array, getWardBudgetSummary?: function }}
+ * @returns {Promise<{ answer: string, intent: string, source: 'ward_mitra'|'knowledge_base'|'project_data'|'fallback' }>}
  */
-export function respondAsWardMitra({ question, userProfile = null, projects, wards }) {
+export async function respondAsWardMitra({ question, userProfile = null, projects, wards, getWardBudgetSummary }) {
   const trimmed = question?.trim() ?? '';
   const intent = detectWardMitraIntent(trimmed);
 
@@ -56,27 +57,39 @@ export function respondAsWardMitra({ question, userProfile = null, projects, war
       if (!projects?.length) {
         return { answer: NO_PUBLIC_PROJECTS_MESSAGE, intent, source: 'fallback' };
       }
-      const answer = answerCitizenQuery(trimmed, projects, wards);
-      return { answer, intent, source: 'project_data' };
+      // Retrieval-augmented: pulls the real ward/project records (and the
+      // official ward budget, if set) relevant to this question and has
+      // Gemini write the actual answer from them, falling back to the
+      // deterministic engine if no API key / failure.
+      const { answer, source } = await answerCitizenQueryWithRAG(
+        trimmed,
+        projects,
+        wards,
+        undefined,
+        getWardBudgetSummary,
+      );
+      return { answer, intent, source: source === 'ai' ? 'project_data_ai' : 'project_data' };
     }
 
     case 'unknown':
     default: {
-      const engineAnswer = answerCitizenQuery(trimmed, projects, wards);
-      const isGenericHelp = /try asking about|Ma .* ko public data|I answer from/i.test(engineAnswer);
-
-      if (isGenericHelp && trimmed.length > 0) {
-        return {
-          answer: `${UNKNOWN_FALLBACK_HINT}\n\n${engineAnswer}`,
-          intent: 'unknown',
-          source: 'fallback',
-        };
-      }
+      // No keyword matched a known intent — the deterministic engine's
+      // answerGeneral() already returns a complete "try asking about..."
+      // help message on its own, so just return that directly instead of
+      // also prepending UNKNOWN_FALLBACK_HINT (that used to double up into
+      // two near-identical "try asking about ward budgets..." paragraphs).
+      const { answer: engineAnswer, source } = await answerCitizenQueryWithRAG(
+        trimmed,
+        projects,
+        wards,
+        undefined,
+        getWardBudgetSummary,
+      );
 
       return {
         answer: engineAnswer,
-        intent: intent === 'unknown' ? 'unknown' : intent,
-        source: 'project_data',
+        intent: 'unknown',
+        source: source === 'ai' ? 'project_data_ai' : 'fallback',
       };
     }
   }

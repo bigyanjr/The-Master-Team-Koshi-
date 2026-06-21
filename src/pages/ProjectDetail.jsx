@@ -75,7 +75,7 @@ export default function ProjectDetail() {
         <EmptyState
           title="Project not found"
           description="This project may not be published yet or may have been removed."
-          actionLabel="Back to spending"
+          actionLabel="Back to budgeting"
           actionTo="/dashboard"
         />
       </div>
@@ -148,7 +148,7 @@ export default function ProjectDetail() {
 
         <section>
           <SectionHeading title={t('pd.scanTitle')} subtitle="Use your phone to open this project's public record" />
-          <QRCodePanel projectId={project.id} />
+          <QRCodePanel projectId={project.id} project={project} allProjects={publishedProjects} />
         </section>
 
         <MoneyFlowDiagram compact />

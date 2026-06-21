@@ -114,7 +114,7 @@ export default function AdminProjectTable({ projects, wards }) {
                   </td>
                   <td className="px-3 py-4">
                     <ProgressBar value={project.progressPercent} showLabel={false} size="sm" />
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">{project.progressPercent}%</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500">{project.progressPercent}%</span>
                   </td>
                   <td className="px-3 py-4"><StatusBadge status={project.status} /></td>
                   <td className="px-3 py-4"><RiskLevelBadge level={risk.label} /></td>

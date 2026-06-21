@@ -105,7 +105,7 @@ export default function QrDemo() {
               Scan with your phone camera
             </div>
 
-            <p className="text-[10px] text-slate-400 mt-3 break-all leading-relaxed px-2">
+            <p className="text-xs text-slate-400 mt-3 break-all leading-relaxed px-2">
               {scanUrl}
             </p>
           </div>
@@ -132,14 +132,14 @@ export default function QrDemo() {
                 {suggestedLanUrl && (
                   <p>
                     Open this on your laptop first, then scan again:{' '}
-                    <code className="font-mono text-[11px] bg-amber-100 px-1 rounded break-all">
+                    <code className="font-mono text-xs bg-amber-100 px-1 rounded break-all">
                       {suggestedLanUrl}/qr-demo/{id}
                     </code>
                   </p>
                 )}
                 <p className="text-amber-800">
                   Phone and laptop must be on the <strong>same Wi‑Fi</strong>. Run{' '}
-                  <code className="font-mono text-[11px] bg-amber-100 px-1 rounded">npm run dev</code>{' '}
+                  <code className="font-mono text-xs bg-amber-100 px-1 rounded">npm run dev</code>{' '}
                   and allow Node.js through Windows Firewall if asked.
                 </p>
               </div>
@@ -151,8 +151,8 @@ export default function QrDemo() {
               <Info className="h-4 w-4 shrink-0 mt-0.5" />
               <p className="leading-relaxed text-xs sm:text-sm">
                 Testing on this computer? Phones cannot scan localhost. Run{' '}
-                <code className="font-mono text-[11px] bg-amber-100 px-1 rounded">npm run dev</code>{' '}
-                and set <code className="font-mono text-[11px] bg-amber-100 px-1 rounded">VITE_PUBLIC_URL</code>{' '}
+                <code className="font-mono text-xs bg-amber-100 px-1 rounded">npm run dev</code>{' '}
+                and set <code className="font-mono text-xs bg-amber-100 px-1 rounded">VITE_PUBLIC_URL</code>{' '}
                 to your Wi‑Fi IP so the QR opens on your phone.
               </p>
             </div>

@@ -29,11 +29,11 @@ export const translations = {
   },
 
   // Hero buttons / search / quick actions
-  'hero.viewSpending': { en: 'View public spending', ne: 'सार्वजनिक खर्च हेर्नुहोस्' },
+  'hero.viewSpending': { en: 'View public budgeting', ne: 'सार्वजनिक बजेट हेर्नुहोस्' },
   'hero.askMitra': { en: 'Ask Ward Mitra', ne: 'वार्ड मित्रलाई सोध्नुहोस्' },
   'hero.searchPlaceholder': { en: 'Search projects, contractors, or wards…', ne: 'परियोजना, ठेकेदार, वा वार्ड खोज्नुहोस्…' },
   'hero.searchBtn': { en: 'Search', ne: 'खोज्नुहोस्' },
-  'quick.viewSpending': { en: 'View Public Spending', ne: 'सार्वजनिक खर्च हेर्नुहोस्' },
+  'quick.viewSpending': { en: 'View Public Budgeting', ne: 'सार्वजनिक बजेट हेर्नुहोस्' },
   'quick.browseProjects': { en: 'Browse Projects', ne: 'परियोजनाहरू हेर्नुहोस्' },
   'quick.askMitra': { en: 'Ask Ward Mitra', ne: 'वार्ड मित्रलाई सोध्नुहोस्' },
   'quick.shareFeedback': { en: 'Share Feedback', ne: 'प्रतिक्रिया दिनुहोस्' },
@@ -42,7 +42,7 @@ export const translations = {
   'audience.title': { en: 'Built for everyone in Itahari', ne: 'इटहरीका सबैका लागि बनाइएको' },
   'audience.subtitle': { en: 'Pick the path that fits you.', ne: 'तपाईंलाई मिल्ने बाटो छान्नुहोस्।' },
   'audience.citizens.title': { en: 'For Citizens', ne: 'नागरिकहरूका लागि' },
-  'audience.citizens.cta': { en: 'View spending', ne: 'खर्च हेर्नुहोस्' },
+  'audience.citizens.cta': { en: 'View budgeting', ne: 'बजेट हेर्नुहोस्' },
   'audience.wardOffice.title': { en: 'For Ward Office', ne: 'वार्ड कार्यालयका लागि' },
   'audience.wardOffice.cta': { en: 'Ward office login', ne: 'वार्ड कार्यालय लगइन' },
   'audience.itahari.title': { en: 'For Itahari', ne: 'इटहरीका लागि' },
@@ -57,13 +57,14 @@ export const translations = {
   // Ready section
   'ready.title': { en: 'Ready to look?', ne: 'हेर्न तयार हुनुहुन्छ?' },
   'ready.subtitle': { en: 'No login needed.', ne: 'लगइन आवश्यक छैन।' },
-  'ready.cta': { en: 'Open public spending', ne: 'सार्वजनिक खर्च खोल्नुहोस्' },
+  'ready.cta': { en: 'Open public budgeting', ne: 'सार्वजनिक बजेट खोल्नुहोस्' },
 
   // Footer
+  'footer.status': { en: 'All systems operational', ne: 'सबै प्रणाली सुचारु रूपमा चलिरहेको छ' },
   'footer.citizens.heading': { en: 'For citizens', ne: 'नागरिकहरूका लागि' },
   'footer.wardOffice.heading': { en: 'For ward office', ne: 'वार्ड कार्यालयका लागि' },
   'footer.contact.heading': { en: 'Contact', ne: 'सम्पर्क' },
-  'footer.link.publicSpending': { en: 'Public spending', ne: 'सार्वजनिक खर्च' },
+  'footer.link.publicSpending': { en: 'Public budgeting', ne: 'सार्वजनिक बजेट' },
   'footer.link.wardProjects': { en: 'Ward projects', ne: 'वार्ड परियोजनाहरू' },
   'footer.link.askMitra': { en: 'Ask Ward Mitra', ne: 'वार्ड मित्रलाई सोध्नुहोस्' },
   'footer.link.shareFeedback': { en: 'Share feedback', ne: 'प्रतिक्रिया दिनुहोस्' },
@@ -81,6 +82,21 @@ export const translations = {
   'admin.nav.profile': { en: 'Profile', ne: 'प्रोफाइल' },
   'admin.publicPortal': { en: 'Public portal', ne: 'सार्वजनिक पोर्टल' },
 
+  // Ward budget (admin + citizen)
+  'wardBudget.set': { en: 'Set Ward Budget', ne: 'वार्ड बजेट तोक्नुहोस्' },
+  'wardBudget.manage': { en: 'Manage Ward Budget', ne: 'वार्ड बजेट व्यवस्थापन गर्नुहोस्' },
+  'wardBudget.card.budget.label': { en: 'Ward Budget', ne: 'वार्ड बजेट' },
+  'wardBudget.card.budget.sub': { en: 'Total allocated for', ne: 'का लागि कुल विनियोजन' },
+  'wardBudget.card.expenditure.label': { en: 'Ward Expenditure', ne: 'वार्ड खर्च' },
+  'wardBudget.card.expenditure.sub': { en: 'Amount already spent/paid', ne: 'पहिले नै खर्च/भुक्तानी भएको रकम' },
+  'wardBudget.card.remaining.label': { en: 'Remaining Budget', ne: 'बाँकी बजेट' },
+  'wardBudget.card.remaining.sub': { en: 'Budget left for ward work', ne: 'वार्ड कामका लागि बाँकी बजेट' },
+  'wardBudget.card.projects.label': { en: 'Ward Projects', ne: 'वार्ड परियोजनाहरू' },
+  'wardBudget.card.projects.sub': { en: 'Published public projects', ne: 'प्रकाशित सार्वजनिक परियोजनाहरू' },
+  'wardBudget.notPublished': { en: 'Budget not published yet by ward office', ne: 'वार्ड कार्यालयले अहिलेसम्म बजेट प्रकाशित गरेको छैन' },
+  'wardBudget.spentLabel': { en: 'Spent', ne: 'खर्च भयो' },
+  'wardBudget.ofBudget': { en: 'of ward budget', ne: 'वार्ड बजेटको' },
+
   // Money flow diagram
   'flow.title': { en: 'How public money becomes visible', ne: 'सार्वजनिक पैसा कसरी देखिने हुन्छ' },
   'flow.stepLabel': { en: 'Step', ne: 'चरण' },
@@ -97,8 +113,8 @@ export const translations = {
   'flow.feedback.label': { en: 'Feedback', ne: 'प्रतिक्रिया' },
   'flow.feedback.hint': { en: 'Citizen voice', ne: 'नागरिक आवाज' },
 
-  // Dashboard (public spending)
-  'dashboard.heading.suffix': { en: 'Public Spending', ne: 'सार्वजनिक खर्च' },
+  // Dashboard (public budgeting)
+  'dashboard.heading.suffix': { en: 'Public Budgeting', ne: 'सार्वजनिक बजेट' },
   'dashboard.chooseWard': { en: 'Choose your ward', ne: 'आफ्नो वार्ड छान्नुहोस्' },
   'ward.all': { en: 'All Wards', ne: 'सबै वार्ड' },
   'kpi.wardProjects.label': { en: 'Ward Projects', ne: 'वार्ड परियोजनाहरू' },
@@ -115,7 +131,7 @@ export const translations = {
 
   // Projects list
   'projects.title': { en: 'Ward Projects', ne: 'वार्ड परियोजनाहरू' },
-  'projects.backToSpending': { en: 'Back to spending', ne: 'खर्चमा फर्कनुहोस्' },
+  'projects.backToSpending': { en: 'Back to budgeting', ne: 'बजेटमा फर्कनुहोस्' },
   'projects.searchPlaceholder': { en: 'Search by project name or contractor…', ne: 'परियोजनाको नाम वा ठेकेदारबाट खोज्नुहोस्…' },
   'projects.clearFilters': { en: 'Clear filters', ne: 'फिल्टर हटाउनुहोस्' },
   'projects.noneYet': { en: 'No projects yet', ne: 'अहिलेसम्म कुनै परियोजना छैन' },
@@ -162,7 +178,7 @@ export const translations = {
   'ask.tryAsking': { en: 'Try asking:', ne: 'सोधेर हेर्नुहोस्:' },
   'ask.send': { en: 'Send', ne: 'पठाउनुहोस्' },
   'ask.inputPlaceholder': { en: 'Ask about ward budget, projects, payments, delays…', ne: 'वार्ड बजेट, परियोजना, भुक्तानी, ढिलाइको बारेमा सोध्नुहोस्…' },
-  'ask.viewSpendingLink': { en: 'View spending →', ne: 'खर्च हेर्नुहोस् →' },
+  'ask.viewSpendingLink': { en: 'View budgeting →', ne: 'बजेट हेर्नुहोस् →' },
 };
 
 export function translate(key, language) {

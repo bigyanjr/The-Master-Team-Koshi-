@@ -1,13 +1,16 @@
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { PRODUCT_NAME, MUNICIPALITY_DEMO } from '../config/branding';
 import {
   Shield, MapPin, HardHat, Wallet, TrendingUp, Receipt,
   Camera, AlertTriangle, ExternalLink, CheckCircle2,
-  FolderKanban,
+  FolderKanban, WifiOff, RadioTower,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { findViewableProject } from '../utils/projectVisibility';
+import { findViewableProject, isPublicProject } from '../utils/projectVisibility';
+import { decodeScanSnapshot } from '../utils/qrUrl';
+import { fetchLiveSync } from '../services/liveSyncService';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import EmptyState from '../components/ui/EmptyState';
 import { StatusBadge, RiskLevelBadge } from '../components/ui/Badge';
@@ -29,7 +32,7 @@ function InfoRow({ icon: Icon, label, value, highlight }) {
         <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</p>
         <p className="text-sm font-bold text-slate-900 mt-0.5 leading-snug">{value}</p>
       </div>
     </div>
@@ -38,9 +41,43 @@ function InfoRow({ icon: Icon, label, value, highlight }) {
 
 export default function ProjectMobileScan() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const { projects, wards, dataLoading } = useData();
   const { profile } = useAuth();
-  const project = findViewableProject(projects, id, profile);
+  const liveProject = findViewableProject(projects, id, profile);
+
+  // Real-time updates on a device with no local data of its own (e.g. a
+  // citizen's phone): poll the dev-server live-sync endpoint (see
+  // liveSyncService.js / vite.config.js) every few seconds so admin edits
+  // made *after* the QR was scanned still show up, without re-scanning.
+  // This is the full live project — same shape as `liveProject` — so it's
+  // treated identically below, not as a frozen snapshot.
+  const [syncedData, setSyncedData] = useState(null);
+  useEffect(() => {
+    if (liveProject) return undefined;
+    let cancelled = false;
+    const poll = async () => {
+      const fresh = await fetchLiveSync();
+      if (!cancelled && fresh) setSyncedData(fresh);
+    };
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [liveProject, id]);
+
+  const syncedProject = !liveProject
+    ? syncedData?.projects?.find((p) => p.id === id && isPublicProject(p)) ?? null
+    : null;
+  const liveContextProjects = liveProject ? projects : (syncedData?.projects ?? []);
+  const isLiveSynced = !liveProject && Boolean(syncedProject);
+
+  // Last-resort fallback for the very first paint on a device that hasn't
+  // reached the live-sync endpoint yet (or never will, e.g. a production
+  // build with no dev server behind it) — see qrUrl.js for why the QR link
+  // carries a precomputed snapshot for exactly this case.
+  const snapshot = (liveProject || syncedProject) ? null : decodeScanSnapshot(searchParams.get('d'));
+  const isOfflineSnapshot = !liveProject && !syncedProject && Boolean(snapshot);
+  const project = liveProject || syncedProject || snapshot;
 
   if (dataLoading) {
     return (
@@ -65,16 +102,43 @@ export default function ProjectMobileScan() {
   }
 
   const ward = getWardByNo(wards, project.wardNo);
-  const paid = getTotalPaid(project);
-  const budgetUsed = getBudgetUsedPercent(project);
-  const remaining = Math.max(0, (project.allocatedBudget ?? 0) - paid);
-  const flags = getRiskFlags(project, projects);
-  const risk = getRiskLevel(project, projects);
-  const score = calculateTrustScore(project, projects);
-  const explanation = generateRiskExplanation(project, projects);
-  const payments = project.payments ?? [];
-  const proofs = project.proofs ?? [];
-  const complaints = project.complaints ?? [];
+
+  let paid; let budgetUsed; let remaining; let flags; let risk; let score; let explanation;
+  let paymentCount; let proofCount; let complaintCount; let latestPayment; let latestProofTitle;
+
+  if (isOfflineSnapshot) {
+    paid = snapshot.paidAmount ?? 0;
+    budgetUsed = snapshot.budgetUsedPercent ?? 0;
+    remaining = Math.max(0, (snapshot.allocatedBudget ?? 0) - paid);
+    flags = (snapshot.riskFlagLabels ?? []).map((label, i) => ({ id: `flag-${i}`, label }));
+    risk = { label: snapshot.riskLabel || 'Not enough public data yet' };
+    score = snapshot.riskScore ?? null;
+    explanation = snapshot.riskExplanation || '';
+    paymentCount = snapshot.paymentCount ?? 0;
+    proofCount = snapshot.proofCount ?? 0;
+    complaintCount = snapshot.complaintCount ?? 0;
+    latestPayment = snapshot.latestPayment ?? null;
+    latestProofTitle = snapshot.latestProofTitle ?? null;
+  } else {
+    const payments = project.payments ?? [];
+    const proofs = project.proofs ?? [];
+    const complaints = project.complaints ?? [];
+    const riskContext = liveContextProjects.length ? liveContextProjects : [project];
+    paid = getTotalPaid(project);
+    budgetUsed = getBudgetUsedPercent(project);
+    remaining = Math.max(0, (project.allocatedBudget ?? 0) - paid);
+    flags = getRiskFlags(project, riskContext);
+    risk = getRiskLevel(project, riskContext);
+    score = calculateTrustScore(project, riskContext);
+    explanation = generateRiskExplanation(project, riskContext);
+    paymentCount = payments.length;
+    proofCount = proofs.length;
+    complaintCount = complaints.length;
+    latestPayment = payments.length
+      ? [...payments].sort((a, b) => new Date(b.date) - new Date(a.date))[0]
+      : null;
+    latestProofTitle = proofs.length ? proofs[proofs.length - 1].title : null;
+  }
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-brand-900 via-brand-900 to-slate-900 text-white">
@@ -94,6 +158,18 @@ export default function ProjectMobileScan() {
           <p className="flex items-center gap-1.5 text-xs text-brand-200 mt-2">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
             {ward.name} · {project.location}
+          </p>
+        )}
+        {isLiveSynced && (
+          <p className="flex items-center gap-1.5 text-xs text-emerald-300 mt-2">
+            <RadioTower className="h-3.5 w-3.5 shrink-0 animate-pulse" />
+            Live — updates automatically as the ward office publishes changes
+          </p>
+        )}
+        {isOfflineSnapshot && (
+          <p className="flex items-center gap-1.5 text-xs text-amber-300 mt-2">
+            <WifiOff className="h-3.5 w-3.5 shrink-0" />
+            Snapshot captured {formatDate(snapshot.snapshotAt)} — may not reflect the latest updates
           </p>
         )}
       </header>
@@ -133,15 +209,15 @@ export default function ProjectMobileScan() {
             </div>
             <div className="flex justify-between gap-2">
               <dt className="text-slate-500">Payment releases</dt>
-              <dd className="font-bold">{payments.length}</dd>
+              <dd className="font-bold">{paymentCount}</dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt className="text-slate-500">Proof uploads</dt>
-              <dd className="font-bold">{proofs.length}</dd>
+              <dd className="font-bold">{proofCount}</dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt className="text-slate-500">Citizen feedback</dt>
-              <dd className="font-bold">{complaints.length}</dd>
+              <dd className="font-bold">{complaintCount}</dd>
             </div>
           </dl>
         </div>
@@ -169,42 +245,37 @@ export default function ProjectMobileScan() {
           )}
         </div>
 
-        {payments.length > 0 && (
+        {latestPayment && (
           <div className="rounded-2xl bg-white text-slate-900 p-4 shadow-xl">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Latest payment</p>
-            {(() => {
-              const latest = [...payments].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-              return (
-                <>
-                  <p className="text-sm font-bold">{formatCurrency(latest.amount)}</p>
-                  <p className="text-xs text-slate-600 mt-1">{latest.milestone}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{formatDate(latest.date)}</p>
-                </>
-              );
-            })()}
+            <p className="text-sm font-bold">{formatCurrency(latestPayment.amount)}</p>
+            <p className="text-xs text-slate-600 mt-1">{latestPayment.milestone}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{formatDate(latestPayment.date)}</p>
           </div>
         )}
 
-        {proofs.length > 0 && (
+        {latestProofTitle && (
           <div className="rounded-2xl bg-white text-slate-900 p-4 shadow-xl">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1">
               <Camera className="h-3.5 w-3.5" /> Latest proof
             </p>
-            <p className="text-sm font-medium">{proofs[proofs.length - 1].title}</p>
+            <p className="text-sm font-medium">{latestProofTitle}</p>
           </div>
         )}
 
-        <p className="text-[10px] text-center text-brand-300/80 px-4 leading-relaxed">
+        <p className="text-xs text-center text-brand-300/80 px-4 leading-relaxed">
           Public transparency record · {MUNICIPALITY_DEMO} · Not a legal certificate
         </p>
 
-        <Link
-          to={`/projects/${project.id}`}
-          className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-white/10 border border-white/20 text-sm font-semibold text-white active:bg-white/20"
-        >
-          View full project page
-          <ExternalLink className="h-4 w-4" />
-        </Link>
+        {Boolean(liveProject) && (
+          <Link
+            to={`/projects/${project.id}`}
+            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-white/10 border border-white/20 text-sm font-semibold text-white active:bg-white/20"
+          >
+            View full project page
+            <ExternalLink className="h-4 w-4" />
+          </Link>
+        )}
       </main>
     </div>
   );

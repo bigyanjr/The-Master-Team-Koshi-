@@ -77,9 +77,13 @@ function buildProfile(uid, data) {
   const wardRaw = data.wardNo;
   const wardNo = wardRaw != null && wardRaw !== '' ? Number(wardRaw) : null;
 
+  const fallbackName = role === ROLES.WARD_ADMIN
+    ? (data.positionTitle || 'Ward Admin')
+    : '';
+
   const profile = {
     uid,
-    fullName: data.fullName?.trim() || '',
+    fullName: data.fullName?.trim() || fallbackName,
     email: normalizeEmail(data.email || ''),
     role,
     wardNo: Number.isFinite(wardNo) ? wardNo : null,
@@ -96,6 +100,10 @@ function buildProfile(uid, data) {
 
   if (data.loginAlias) {
     profile.loginAlias = data.loginAlias.trim().toLowerCase();
+  }
+
+  if (role === ROLES.PUBLIC) {
+    profile.citizenshipNumber = data.citizenshipNumber?.trim() || null;
   }
 
   if (role === ROLES.WARD_ADMIN) {
@@ -314,7 +322,7 @@ async function localRegister(payload) {
 
   const isWardAdmin = payload.role === ROLES.WARD_ADMIN;
 
-  if (!isWardAdmin && payload.username && findLocalUserByUsername(payload.username)) {
+  if (payload.username && findLocalUserByUsername(payload.username)) {
     const err = new Error('Username already taken. Please choose another username.');
     err.code = 'auth/username-already-in-use';
     throw err;
@@ -326,11 +334,12 @@ async function localRegister(payload) {
   const profile = buildProfile(uid, {
     fullName: payload.fullName,
     email: payload.email,
-    username: isWardAdmin ? null : payload.username,
+    username: payload.username,
     loginAlias,
     role: isWardAdmin ? ROLES.WARD_ADMIN : ROLES.PUBLIC,
-    wardNo: isWardAdmin ? payload.wardNo : payload.wardNo || null,
+    wardNo: isWardAdmin ? payload.wardNo : null,
     phone: payload.phone,
+    citizenshipNumber: payload.citizenshipNumber,
     positionTitle: payload.positionTitle,
     municipality: MUNICIPALITY_NAME,
     approved: true,
@@ -427,19 +436,24 @@ async function firebaseRegister(payload) {
   if (!auth) throw new Error('Firebase Auth is not configured');
 
   const cred = await createUserWithEmailAndPassword(auth, normalizeEmail(payload.email), payload.password);
-  await firebaseUpdateProfile(cred.user, { displayName: payload.fullName.trim() });
 
   const isWardAdmin = payload.role === ROLES.WARD_ADMIN;
   const loginAlias = isWardAdmin && payload.wardNo ? `ward${payload.wardNo}@itahari` : null;
+  const displayName = payload.fullName?.trim() || payload.positionTitle || payload.username;
+
+  if (displayName) {
+    await firebaseUpdateProfile(cred.user, { displayName });
+  }
 
   const profile = buildProfile(cred.user.uid, {
     fullName: payload.fullName,
     email: payload.email,
-    username: isWardAdmin ? null : payload.username,
+    username: payload.username,
     loginAlias,
     role: isWardAdmin ? ROLES.WARD_ADMIN : ROLES.PUBLIC,
-    wardNo: isWardAdmin ? payload.wardNo : payload.wardNo || null,
+    wardNo: isWardAdmin ? payload.wardNo : null,
     phone: payload.phone,
+    citizenshipNumber: payload.citizenshipNumber,
     positionTitle: payload.positionTitle,
     municipality: MUNICIPALITY_NAME,
     approved: true,
@@ -585,30 +599,36 @@ export function isAuthConfigured() {
 
 export function validateRegistration({
   fullName, username, email, password, confirmPassword, role, wardNo, phone,
+  citizenshipNumber, positionTitle,
 }) {
   const errors = {};
+  const isWardAdmin = role === ROLES.WARD_ADMIN;
 
-  if (!fullName?.trim()) errors.fullName = 'Full name is required';
+  if (!isWardAdmin && !fullName?.trim()) errors.fullName = 'Full name is required';
+
+  const normalizedUsername = normalizeUsername(username);
+  if (!normalizedUsername) {
+    errors.username = 'Username is required';
+  } else if (!USERNAME_PATTERN.test(normalizedUsername)) {
+    errors.username = 'Username must be 3+ characters: lowercase letters, numbers, and underscore only';
+  }
+
   if (!email?.trim()) errors.email = 'Email is required';
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errors.email = 'Enter a valid email';
-
-  if (role === ROLES.PUBLIC) {
-    const normalizedUsername = normalizeUsername(username);
-    if (!normalizedUsername) {
-      errors.username = 'Username is required';
-    } else if (!USERNAME_PATTERN.test(normalizedUsername)) {
-      errors.username = 'Username must be 3+ characters: lowercase letters, numbers, and underscore only';
-    }
-  }
 
   if (!password) errors.password = 'Password is required';
   else if (password.length < 6) errors.password = 'Password must be at least 6 characters';
 
   if (password !== confirmPassword) errors.confirmPassword = 'Passwords do not match';
 
-  if (role === ROLES.WARD_ADMIN) {
-    if (!phone?.trim()) errors.phone = 'Phone is required for ward admin accounts';
-    if (!wardNo) errors.wardNo = 'Ward number is required';
+  if (!isWardAdmin) {
+    if (!phone?.trim()) errors.phone = 'Phone is required';
+    if (!citizenshipNumber?.trim()) errors.citizenshipNumber = 'Citizenship/Nagarikta number is required';
+  }
+
+  if (isWardAdmin) {
+    if (!wardNo) errors.wardNo = 'Ward is required';
+    if (!positionTitle?.trim()) errors.positionTitle = 'Position is required';
   }
 
   if (wardNo) {
@@ -624,7 +644,7 @@ export function validateRegistration({
 export async function registerUser(payload) {
   const isWardAdmin = payload.role === ROLES.WARD_ADMIN;
 
-  if (!isWardAdmin && payload.username) {
+  if (payload.username) {
     const taken = await isUsernameTaken(payload.username);
     if (taken) {
       const err = new Error('Username already taken. Please choose another username.');
@@ -633,16 +653,24 @@ export async function registerUser(payload) {
     }
   }
 
+  // Conditional payload — citizen fields are omitted for ward_admin and vice versa,
+  // so registration never fails due to fields that don't apply to that account type.
   const safePayload = {
-    fullName: payload.fullName,
-    username: isWardAdmin ? null : normalizeUsername(payload.username),
+    username: normalizeUsername(payload.username),
     email: payload.email,
     password: payload.password,
-    phone: payload.phone,
-    // Citizens always register as public; ward_admin only when explicitly registering as IT/Admin.
     role: isWardAdmin ? ROLES.WARD_ADMIN : ROLES.PUBLIC,
-    wardNo: isWardAdmin ? payload.wardNo : payload.wardNo || null,
-    positionTitle: isWardAdmin ? payload.positionTitle : null,
+    ...(isWardAdmin
+      ? {
+        wardNo: payload.wardNo,
+        positionTitle: payload.positionTitle,
+        municipality: MUNICIPALITY_NAME,
+      }
+      : {
+        fullName: payload.fullName,
+        phone: payload.phone,
+        citizenshipNumber: payload.citizenshipNumber,
+      }),
   };
 
   if (isFirebaseConfigured()) {
@@ -689,6 +717,37 @@ export function subscribeToAuth(callback) {
     return firebaseSubscribe(callback);
   }
   return localSubscribe(callback);
+}
+
+/**
+ * Lets a signed-in user fill in/update their own profile fields (currently:
+ * full name). Some accounts — notably citizens registered before fullName
+ * was required, or any record edited directly in storage — can end up with
+ * no name saved at all, which is why the header/profile page show blank.
+ * This is how a user fixes that themselves, without needing a new account.
+ */
+export async function updateUserProfile(uid, updates) {
+  if (!uid) throw new Error('Not signed in.');
+
+  if (isFirebaseConfigured()) {
+    const auth = getFirebaseAuth();
+    if (auth?.currentUser && updates.fullName) {
+      try {
+        await firebaseUpdateProfile(auth.currentUser, { displayName: updates.fullName });
+      } catch {
+        // non-fatal — Firestore profile doc below is the source of truth the app reads from
+      }
+    }
+    return firebaseSaveProfile(uid, updates);
+  }
+
+  const users = readLocalUsers();
+  const idx = users.findIndex((u) => u.uid === uid);
+  if (idx < 0) throw new Error('Account not found.');
+
+  users[idx] = { ...users[idx], ...updates };
+  writeLocalUsers(users);
+  return stripPassword(users[idx]);
 }
 
 export function isWardAdmin(profile) {

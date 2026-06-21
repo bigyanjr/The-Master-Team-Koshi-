@@ -8,10 +8,10 @@ export default function StatCard({ label, value, subtext, icon: Icon, trend, col
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-5 card-shadow dark:bg-slate-900 dark:border-slate-800">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-medium text-slate-500 truncate dark:text-slate-400">{label}</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1 tracking-tight dark:text-slate-50">{value}</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1 tracking-tight break-words dark:text-slate-50">{value}</p>
           {subtext && <p className="text-xs text-slate-400 mt-1 dark:text-slate-500">{subtext}</p>}
           {trend && (
             <p className={`text-xs font-medium mt-1.5 ${trend.positive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
@@ -20,7 +20,7 @@ export default function StatCard({ label, value, subtext, icon: Icon, trend, col
           )}
         </div>
         {Icon && (
-          <div className={`p-2.5 rounded-xl ${iconColors[color]}`}>
+          <div className={`p-2.5 rounded-xl shrink-0 ${iconColors[color]}`}>
             <Icon className="h-5 w-5" />
           </div>
         )}

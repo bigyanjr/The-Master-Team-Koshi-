@@ -30,7 +30,7 @@ function ChatMessage({ role, content, timestamp }) {
           {content}
         </div>
         {timestamp && (
-          <p className={`text-[10px] text-slate-400 mt-1 dark:text-slate-500 ${isBot ? '' : 'text-right'}`}>{timestamp}</p>
+          <p className={`text-xs text-slate-400 mt-1 dark:text-slate-500 ${isBot ? '' : 'text-right'}`}>{timestamp}</p>
         )}
       </div>
     </div>
@@ -56,7 +56,7 @@ function TypingIndicator() {
 }
 
 export default function CitizenQueryBot() {
-  const { publicProjects, wards } = useData();
+  const { publicProjects, wards, getWardBudgetSummary } = useData();
   const { profile } = useAuth();
   const { t } = useLanguage();
   const [messages, setMessages] = useState([
@@ -74,7 +74,7 @@ export default function CitizenQueryBot() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, typing]);
 
-  const submitQuestion = (question) => {
+  const submitQuestion = async (question) => {
     const q = question.trim();
     if (!q || typing) return;
 
@@ -83,16 +83,24 @@ export default function CitizenQueryBot() {
     setInput('');
     setTyping(true);
 
-    setTimeout(() => {
-      const { answer } = respondAsWardMitra({
+    try {
+      const { answer } = await respondAsWardMitra({
         question: q,
         userProfile: profile,
         projects: publicProjects,
         wards,
+        getWardBudgetSummary,
       });
       setMessages((prev) => [...prev, { role: 'bot', content: answer, timestamp: time }]);
+    } catch {
+      setMessages((prev) => [...prev, {
+        role: 'bot',
+        content: 'Sorry, something went wrong answering that. Please try again.',
+        timestamp: time,
+      }]);
+    } finally {
       setTyping(false);
-    }, 650);
+    }
   };
 
   return (

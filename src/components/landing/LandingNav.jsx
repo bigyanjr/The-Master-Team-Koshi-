@@ -32,8 +32,18 @@ const navLinks = [
 
 export default function LandingNav() {
   const [open, setOpen] = useState(false);
-  const { isAuthenticated, canAccessAdminPortal, logout, loading: authLoading } = useAuth();
+  const { isAuthenticated, canAccessAdminPortal, logout, loading: authLoading, profile } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
+
+  // fullName isn't required for ward-admin accounts at registration, so it
+  // can be empty — fall back through position title, username, and the
+  // email's local part (every account has one) before the generic
+  // translated "Profile" label.
+  const displayName = profile?.fullName?.trim()
+    || profile?.positionTitle?.trim()
+    || profile?.username?.trim()
+    || profile?.email?.split('@')[0];
+  const profileLabel = displayName?.split(' ')[0] || t('auth.profile');
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
@@ -109,7 +119,7 @@ export default function LandingNav() {
                       </Link>
                     )}
                     <Link to="/profile">
-                      <Button variant="ghost" size="md" icon={User}>{t('auth.profile')}</Button>
+                      <Button variant="ghost" size="md" icon={User}>{profileLabel}</Button>
                     </Link>
                     <Button variant="secondary" size="md" icon={LogOut} onClick={handleLogout}>{t('auth.logout')}</Button>
                   </>
@@ -177,7 +187,7 @@ export default function LandingNav() {
                       </Link>
                     )}
                     <Link to="/profile" onClick={() => setOpen(false)}>
-                      <Button variant="secondary" size="sm" icon={User} className="w-full">{t('auth.profile')}</Button>
+                      <Button variant="secondary" size="sm" icon={User} className="w-full">{profileLabel}</Button>
                     </Link>
                     <Button variant="ghost" size="sm" icon={LogOut} className="w-full" onClick={handleLogout}>{t('auth.logout')}</Button>
                   </>

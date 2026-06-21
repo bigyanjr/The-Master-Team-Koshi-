@@ -6,7 +6,7 @@ const LOCAL_KEY = 'wardwatch:siteSettings';
 
 /** Default settings used until a ward admin configures something different. */
 export const DEFAULT_SITE_SETTINGS = {
-  heroImageUrl: '/home.jpg',
+  heroImageUrl: '/image.png',
 };
 
 function readLocalSettings() {

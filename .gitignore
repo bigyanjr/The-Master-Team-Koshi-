@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Dev-only live-sync cache for QR scanning (see vite.config.js) — never commit
+.wardwatch-live-sync*.json
 .env
 .env.*
 !.env.example

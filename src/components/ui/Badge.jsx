@@ -8,7 +8,7 @@ const colorMap = {
 };
 
 export default function Badge({ children, color = 'slate', size = 'sm', className = '', dot = false }) {
-  const sizeClass = size === 'lg' ? 'px-3 py-1 text-xs' : 'px-2.5 py-0.5 text-[11px]';
+  const sizeClass = size === 'lg' ? 'px-3 py-1 text-xs' : 'px-2.5 py-0.5 text-xs';
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-md font-semibold ring-1 ring-inset ${colorMap[color] || colorMap.slate} ${sizeClass} ${className}`}>
       {dot && <span className={`h-1.5 w-1.5 rounded-full ${color === 'emerald' ? 'bg-emerald-500' : color === 'amber' ? 'bg-amber-500' : color === 'red' ? 'bg-red-500' : color === 'blue' ? 'bg-blue-500' : 'bg-slate-400'}`} />}

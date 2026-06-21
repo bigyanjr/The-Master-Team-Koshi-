@@ -13,8 +13,14 @@ import {
 
 export { getProjectScanUrl, getProjectPublicUrl } from '../../utils/qrUrl';
 
-export default function QRCodePanel({ projectId }) {
-  const scanUrl = getProjectScanUrl(projectId);
+export default function QRCodePanel({ projectId, project = null, allProjects }) {
+  // Embed a snapshot when the live project is available so the QR still
+  // works on a phone that has never loaded this app (see qrUrl.js). This
+  // makes the real link long (it carries the project data), so we keep a
+  // short, bare version around just for what gets printed on screen as text
+  // — nobody needs to read a wall of base64.
+  const scanUrl = getProjectScanUrl(projectId, project, allProjects);
+  const displayUrl = getProjectScanUrl(projectId);
   const fullUrl = getProjectPublicUrl(projectId);
   const localhostWarning = isLocalhostUrl();
   const [copied, setCopied] = useState(false);
@@ -48,7 +54,7 @@ export default function QRCodePanel({ projectId }) {
               <Wifi className="h-3.5 w-3.5 shrink-0" />
               Phone scan tip: use Network URL
             </p>
-            <p className="text-[11px] text-amber-800 mt-1 leading-relaxed">
+            <p className="text-xs text-amber-800 mt-1 leading-relaxed">
               Open the <strong>Network</strong> URL from your terminal on PC first, then scan. Same Wi‑Fi required.
             </p>
           </div>
@@ -60,7 +66,11 @@ export default function QRCodePanel({ projectId }) {
             <div className="absolute -inset-3 bg-gradient-to-br from-brand-400/30 to-emerald-400/30 rounded-3xl blur-xl" />
             <div className="relative p-2 rounded-2xl bg-gradient-to-br from-brand-800 to-emerald-700 shadow-xl">
               <div className="p-4 bg-white rounded-xl">
-                <QRCodeSVG value={scanUrl} size={168} level="H" includeMargin />
+                {/* level="M" (not "H") — the embedded data snapshot already
+                    makes this QR dense; a lower error-correction level keeps
+                    the module grid coarse enough for a phone camera to read
+                    reliably off a lit screen. */}
+                <QRCodeSVG value={scanUrl} size={168} level="M" includeMargin />
               </div>
             </div>
           </div>
@@ -74,7 +84,7 @@ export default function QRCodePanel({ projectId }) {
             Citizens scan this at the construction site to instantly view budget, contractor, payments, proofs, risk flags, and complaints.
           </p>
 
-          <p className="text-[10px] text-slate-400 mt-3 break-all max-w-[260px] font-mono text-center leading-relaxed">{scanUrl}</p>
+          <p className="text-xs text-slate-400 mt-3 break-all max-w-[260px] font-mono text-center leading-relaxed">{displayUrl}</p>
         </div>
 
         {/* Actions */}
@@ -93,11 +103,11 @@ export default function QRCodePanel({ projectId }) {
               Print Site QR Board
             </Button>
           </Link>
-          <Link to={`/scan/${projectId}`} target="_blank" className="w-full">
+          <a href={scanUrl} target="_blank" rel="noopener noreferrer" className="w-full">
             <Button variant="secondary" size="sm" icon={Smartphone} className="w-full">
               Preview on mobile
             </Button>
-          </Link>
+          </a>
           <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="w-full">
             <Button variant="ghost" size="sm" icon={ExternalLink} className="w-full text-slate-500">
               Full project page
@@ -107,22 +117,22 @@ export default function QRCodePanel({ projectId }) {
       </div>
 
       <div id={`qr-export-${projectId}`} className="hidden" aria-hidden>
-        <QRCodeSVG value={scanUrl} size={512} level="H" includeMargin />
+        <QRCodeSVG value={scanUrl} size={512} level="M" includeMargin />
       </div>
     </div>
   );
 }
 
-export function QRCodeBanner({ projectId }) {
-  const scanUrl = getProjectScanUrl(projectId);
+export function QRCodeBanner({ projectId, project = null, allProjects }) {
+  const scanUrl = getProjectScanUrl(projectId, project, allProjects);
   return (
     <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-brand-50 to-emerald-50 border border-brand-100">
       <div className="p-2 bg-white rounded-lg border border-brand-100 shrink-0 shadow-sm">
-        <QRCodeSVG value={scanUrl} size={56} level="H" />
+        <QRCodeSVG value={scanUrl} size={56} level="M" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-bold text-brand-900">Scan at Project Site</p>
-        <p className="text-[10px] text-brand-600/80 truncate mt-0.5">{scanUrl}</p>
+        <p className="text-xs text-brand-600/80 truncate mt-0.5">{scanUrl}</p>
       </div>
     </div>
   );

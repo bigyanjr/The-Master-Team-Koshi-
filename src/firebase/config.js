@@ -12,6 +12,7 @@ export const COLLECTIONS = {
   aiFeedback: 'aiFeedback',
   bookmarks: 'bookmarks',
   settings: 'settings',
+  wardBudgets: 'wardBudgets',
 };
 
 /**

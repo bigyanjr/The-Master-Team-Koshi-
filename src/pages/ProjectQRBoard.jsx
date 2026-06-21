@@ -18,7 +18,13 @@ export default function ProjectQRBoard() {
   const { profile } = useAuth();
   const project = findViewableProject(projects, id, profile);
   const ward = project ? getWardByNo(wards, project.wardNo) : null;
-  const url = getProjectScanUrl(id);
+  // Embed a live snapshot in the QR itself — see root-cause note in
+  // utils/qrUrl.js — so printed boards work on a phone that has never
+  // loaded this app (no shared backend without Firebase configured). The
+  // printed text underneath stays short and readable; only the QR image
+  // carries the full data-bearing link.
+  const url = getProjectScanUrl(id, project, projects);
+  const displayUrl = getProjectScanUrl(id);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -107,15 +113,15 @@ export default function ProjectQRBoard() {
 
                 <dl className="grid grid-cols-2 gap-3">
                   <div className="p-4 rounded-xl bg-brand-50 border-2 border-brand-100">
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-brand-600">Allocated Budget</dt>
+                    <dt className="text-xs font-bold uppercase tracking-wider text-brand-600">Allocated Budget</dt>
                     <dd className="text-lg font-black text-slate-900 mt-1">{formatCurrency(project.allocatedBudget)}</dd>
                   </div>
                   <div className="p-4 rounded-xl bg-emerald-50 border-2 border-emerald-100">
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Progress</dt>
+                    <dt className="text-xs font-bold uppercase tracking-wider text-emerald-700">Progress</dt>
                     <dd className="text-lg font-black text-slate-900 mt-1">{project.progressPercent}%</dd>
                   </div>
                   <div className="col-span-2 p-4 rounded-xl bg-slate-50 border-2 border-slate-200">
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Contractor</dt>
+                    <dt className="text-xs font-bold uppercase tracking-wider text-slate-500">Contractor</dt>
                     <dd className="text-sm font-bold text-slate-900 mt-1 leading-snug">
                       {project.contractorName || 'Tender in progress — not yet assigned'}
                     </dd>
@@ -140,14 +146,18 @@ export default function ProjectQRBoard() {
                 <div className="relative">
                   <div className="absolute -inset-2 bg-brand-900/10 rounded-2xl" />
                   <div className="relative p-4 bg-white border-4 border-brand-900 rounded-2xl shadow-lg">
-                    <QRCodeSVG value={url} size={200} level="H" includeMargin />
+                    {/* level="Q" — still decent damage tolerance for a
+                        printed sign, but lower module density than "H" so
+                        the embedded data snapshot (see qrUrl.js) scans
+                        reliably from a phone camera. */}
+                    <QRCodeSVG value={url} size={200} level="Q" includeMargin />
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2 text-xs font-bold text-brand-800 uppercase tracking-wide">
                   <ScanLine className="h-4 w-4" />
                   Scan with phone camera
                 </div>
-                <p className="text-[9px] text-slate-400 mt-2 text-center break-all max-w-[220px] leading-relaxed">{url}</p>
+                <p className="text-[9px] text-slate-400 mt-2 text-center break-all max-w-[220px] leading-relaxed">{displayUrl}</p>
               </div>
             </div>
           </div>

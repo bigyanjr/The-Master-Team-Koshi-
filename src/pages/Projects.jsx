@@ -96,7 +96,7 @@ export default function Projects() {
             icon={FolderKanban}
             title={t('projects.noneYet')}
             description="Projects will appear here after ward offices publish them."
-            actionLabel="Go to spending"
+            actionLabel="Go to budgeting"
             actionTo="/dashboard"
           />
         ) : filtered.length === 0 ? (

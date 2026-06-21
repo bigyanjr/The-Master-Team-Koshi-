@@ -14,7 +14,13 @@ import {
   generateRiskExplanation,
 } from './corruptionRiskDetector';
 import { PRODUCT_NAME } from '../config/branding';
-import { formatCurrency, formatCompactCurrency } from './formatters';
+import { formatCurrency } from './formatters';
+
+// Bare compact number (no currency symbol) — every call site below already
+// writes its own "NPR " prefix, so formatLakh must never include one itself.
+// (It used to call formatCompactCurrency(), which already prints "NPR ...",
+// producing a doubled "NPR NPR 0" in chat answers.)
+const compactNumber = new Intl.NumberFormat('en-NP', { notation: 'compact', maximumFractionDigits: 1 });
 
 const CATEGORY_KEYWORDS = {
   roads: 'Roads',
@@ -39,19 +45,27 @@ const CATEGORY_KEYWORDS = {
   market: 'Markets',
 };
 
-const ROMAN_NEPALI_MARKERS = /\b(ko|cha|chha|bhayo|bhayeko|kaha|kahaa|kati|kun|sabai|ward|project|budget|kharcha|jancha|hernu|risky|deri|bhayo|lagyo)\b/i;
+// "ward", "project", "budget" were removed from this list — they're English
+// words this app also uses as loanwords inside Nepali sentences, so any
+// plain English question that mentioned a ward or budget number was
+// wrongly detected as Romanized Nepali and got answered in the wrong
+// language entirely. Only words that are *exclusively* Nepali stay here.
+const ROMAN_NEPALI_MARKERS = /\b(ko|cha|chha|bhayo|bhayeko|kaha|kahaa|kati|kun|sabai|kharcha|jancha|hernu|deri|lagyo|vako|vayeko|vayo|vaneko|paisa|wada)\b/i;
 const DEVANAGARI = /[\u0900-\u097F]/;
 
 function isNepaliStyle(question) {
   return DEVANAGARI.test(question) || ROMAN_NEPALI_MARKERS.test(question);
 }
 
-function extractWardNumber(question) {
+export function extractWardNumber(question) {
   const patterns = [
-    /ward\s*(\d+)/i,
+    // "ward 1", "ward no 1", "ward no. 1", "ward number 1", "ward num 1"
+    /ward\s*(?:no\.?|number|num)?\s*(\d+)/i,
+    // Romanized Nepali: "wada 1", "wada no 1"
+    /wada\s*(?:no\.?|number|num)?\s*(\d+)/i,
     /w\s*(\d+)/i,
-    /वडा\s*(\d+)/,
-    /वडा\s*([०-९]+)/,
+    /वडा\s*(?:नं\.?|नम्बर)?\s*(\d+)/,
+    /वडा\s*(?:नं\.?|नम्बर)?\s*([०-९]+)/,
   ];
   for (const re of patterns) {
     const m = question.match(re);
@@ -60,7 +74,7 @@ function extractWardNumber(question) {
   return null;
 }
 
-function extractCategory(question) {
+export function extractCategory(question) {
   const lower = question.toLowerCase();
   for (const [keyword, category] of Object.entries(CATEGORY_KEYWORDS)) {
     if (lower.includes(keyword)) return category;
@@ -73,10 +87,10 @@ function extractCategory(question) {
 function formatLakh(amount) {
   const lakh = amount / 100000;
   if (lakh >= 1) return `${lakh % 1 === 0 ? lakh : lakh.toFixed(1)} lakh`;
-  return formatCompactCurrency(amount);
+  return compactNumber.format(amount);
 }
 
-function wardProjects(projects, wardNo) {
+export function wardProjects(projects, wardNo) {
   return projects.filter((p) => p.wardNo === wardNo);
 }
 
@@ -121,16 +135,32 @@ function matchIntent(question) {
   return 'general';
 }
 
-function answerBudgetWard(wardNo, projects, nepali) {
+/**
+ * @param {object|null} wardBudgetSummary - the OFFICIAL ward budget, from the
+ * same getWardBudgetSummary() the admin and citizen dashboards use. This is
+ * a different figure than "sum of this ward's named projects' budgets" —
+ * the ward's full annual budget may not all be allocated to named projects
+ * yet, or may exceed what's been assigned so far. When the admin has
+ * published an official figure for this ward, we report THAT as the
+ * headline number instead of recomputing our own (possibly smaller, less
+ * accurate) sum from project records alone.
+ */
+function answerBudgetWard(wardNo, projects, nepali, wardBudgetSummary) {
   const list = wardProjects(projects, wardNo);
-  if (!list.length) {
+  const hasOfficialBudget = Boolean(wardBudgetSummary?.isPublished);
+
+  if (!list.length && !hasOfficialBudget) {
     return nepali
       ? `Ward ${wardNo} ko kunaipani project public record ma bh-etikena.`
       : `No public projects were found for Ward ${wardNo}.`;
   }
 
-  const totalBudget = list.reduce((s, p) => s + (p.allocatedBudget ?? 0), 0);
-  const totalPaid = list.reduce((s, p) => s + getTotalPaid(p), 0);
+  const totalBudget = hasOfficialBudget
+    ? wardBudgetSummary.totalAllocatedBudget
+    : list.reduce((s, p) => s + (p.allocatedBudget ?? 0), 0);
+  const totalPaid = hasOfficialBudget
+    ? wardBudgetSummary.wardExpenditure
+    : list.reduce((s, p) => s + getTotalPaid(p), 0);
 
   if (nepali) {
     const lines = list.map((p) => {
@@ -141,7 +171,10 @@ function answerBudgetWard(wardNo, projects, nepali) {
         : '';
       return `• ${p.title}: NPR ${formatLakh(p.allocatedBudget)} allocate, NPR ${formatLakh(paid)} payment, progress ${p.progressPercent}%.${concern}`;
     });
-    return `Ward ${wardNo} ma ${list.length} wota project cha. Kul budget NPR ${formatLakh(totalBudget)}, ahile samma NPR ${formatLakh(totalPaid)} kharcha record bhayeko cha.\n\n${lines.join('\n')}`;
+    const headline = hasOfficialBudget
+      ? `Ward ${wardNo} ko official kul budget NPR ${formatLakh(totalBudget)} ho, ahile samma NPR ${formatLakh(totalPaid)} kharcha bhayeko cha (${list.length} project).`
+      : `Ward ${wardNo} ma ${list.length} wota project cha. Kul budget NPR ${formatLakh(totalBudget)}, ahile samma NPR ${formatLakh(totalPaid)} kharcha record bhayeko cha.`;
+    return list.length ? `${headline}\n\n${lines.join('\n')}` : headline;
   }
 
   const lines = list.map((p) => {
@@ -153,7 +186,11 @@ function answerBudgetWard(wardNo, projects, nepali) {
     return `• ${p.title}: ${formatCurrency(p.allocatedBudget)} allocated, ${formatCurrency(paid)} paid, ${p.progressPercent}% progress.${concern}`;
   });
 
-  return `Ward ${wardNo} has ${list.length} public project(s). Total allocated budget is ${formatCurrency(totalBudget)} and ${formatCurrency(totalPaid)} has been paid so far.\n\n${lines.join('\n')}`;
+  const headline = hasOfficialBudget
+    ? `Ward ${wardNo}'s official total budget is ${formatCurrency(totalBudget)}, and ${formatCurrency(totalPaid)} has been spent so far across ${list.length} public project(s).`
+    : `Ward ${wardNo} has ${list.length} public project(s). Total allocated budget is ${formatCurrency(totalBudget)} and ${formatCurrency(totalPaid)} has been paid so far.`;
+
+  return list.length ? `${headline}\n\n${lines.join('\n')}` : headline;
 }
 
 function answerDelayed(projects, nepali) {
@@ -250,7 +287,7 @@ function answerGeneral(question, projects, wards, nepali) {
 /**
  * Answer a citizen question using local project & ward data.
  */
-export function answerCitizenQuery(question, projects, wards) {
+export function answerCitizenQuery(question, projects, wards, getWardBudgetSummary) {
   if (!question?.trim()) {
     return 'Please type a question about ward projects or budgets.';
   }
@@ -259,6 +296,7 @@ export function answerCitizenQuery(question, projects, wards) {
   const wardNo = extractWardNumber(question);
   const category = extractCategory(question);
   const intent = matchIntent(question);
+  const wardBudgetSummary = wardNo && getWardBudgetSummary ? getWardBudgetSummary(wardNo) : null;
 
   if (!projects.length && isProjectDataIntent(intent)) {
     return NO_PUBLISHED_RECORDS_MESSAGE;
@@ -307,7 +345,7 @@ export function answerCitizenQuery(question, projects, wards) {
             return `Ward ${wardNo}'s ${category.toLowerCase()} project "${p.title}" received ${formatCurrency(p.allocatedBudget)}. ${formatCurrency(paid)} has been paid (${used}% of budget) and progress is ${p.progressPercent}%.${flags.length ? ` One transparency concern: ${flags[0].label.toLowerCase()}.` : ''}`;
           }
         }
-        return answerBudgetWard(wardNo, projects, nepali);
+        return answerBudgetWard(wardNo, projects, nepali, wardBudgetSummary);
       }
       if (category) {
         return answerContractor(category, projects, nepali);
@@ -318,9 +356,85 @@ export function answerCitizenQuery(question, projects, wards) {
       return answerGeneral(question, projects, wards, nepali);
 
     default:
-      if (wardNo) return answerBudgetWard(wardNo, projects, nepali);
+      if (wardNo) return answerBudgetWard(wardNo, projects, nepali, wardBudgetSummary);
       return answerGeneral(question, projects, wards, nepali);
   }
+}
+
+/** Cap how many projects ever get sent to the AI in one prompt — keeps cost/latency bounded. */
+const MAX_RETRIEVED_PROJECTS = 25;
+
+function summarizeProjectForRetrieval(project, allProjects) {
+  const paid = getTotalPaid(project);
+  const flags = hasEnoughRiskData(project) ? detectCorruptionRisks(project, allProjects) : [];
+  const complaints = project.complaints ?? [];
+
+  return {
+    title: project.title,
+    wardNo: project.wardNo,
+    category: project.category,
+    status: project.status,
+    location: project.location,
+    progressPercent: project.progressPercent ?? 0,
+    allocatedBudget: project.allocatedBudget ?? 0,
+    tenderAmount: project.tenderAmount ?? 0,
+    contractorName: project.contractorName || null,
+    totalPaid: paid,
+    remainingBudget: Math.max(0, (project.allocatedBudget ?? 0) - paid),
+    budgetUsedPercent: getBudgetUsedPercent(project),
+    paymentCount: (project.payments ?? []).length,
+    proofCount: (project.proofs ?? []).length,
+    complaintCount: complaints.length,
+    openComplaintCount: complaints.filter((c) => c.status === 'Pending' || c.status === 'Under Review').length,
+    deadline: project.deadline,
+    startDate: project.startDate,
+    riskFlags: flags.map((f) => f.label),
+    riskScore: hasEnoughRiskData(project) ? getCorruptionRiskScore(project, allProjects) : null,
+  };
+}
+
+/**
+ * "Retrieval" step for the Ward Mitra RAG chatbot (see ai/wardMitraRAG.js):
+ * pulls out exactly the real records relevant to the citizen's question —
+ * scoped to the ward they named, or all published projects if they didn't
+ * name one — so the AI generation step only ever sees real data for the
+ * right ward, never the whole database or facts from other wards.
+ */
+export function buildRetrievalContext(question, projects = [], wards = [], getWardBudgetSummary) {
+  const wardNo = extractWardNumber(question);
+  const category = extractCategory(question);
+
+  let scoped = wardNo ? wardProjects(projects, wardNo) : projects;
+  if (category) scoped = scoped.filter((p) => p.category === category);
+
+  const truncated = scoped.length > MAX_RETRIEVED_PROJECTS;
+  const limited = scoped.slice(0, MAX_RETRIEVED_PROJECTS);
+
+  // The ward's OFFICIAL total budget (set by the admin via "Set Ward
+  // Budget") is a different number than "sum of this ward's named
+  // projects' allocatedBudget" — not every rupee of the ward's budget is
+  // necessarily assigned to a named project yet. When published, this is
+  // the authoritative figure and should be preferred over any sum the
+  // model might otherwise compute from the project list below.
+  const wardBudgetSummary = wardNo && getWardBudgetSummary ? getWardBudgetSummary(wardNo) : null;
+  const officialWardBudget = wardBudgetSummary?.isPublished
+    ? {
+        totalAllocatedBudget: wardBudgetSummary.totalAllocatedBudget,
+        wardExpenditure: wardBudgetSummary.wardExpenditure,
+        remainingBudget: wardBudgetSummary.remainingBudget,
+        spentPercentage: wardBudgetSummary.spentPercentage,
+      }
+    : null;
+
+  return {
+    wardNo,
+    category,
+    municipalityWardCount: wards.length,
+    projectCount: scoped.length,
+    truncated,
+    officialWardBudget,
+    projects: limited.map((p) => summarizeProjectForRetrieval(p, projects)),
+  };
 }
 
 export const SUGGESTED_QUESTIONS = [

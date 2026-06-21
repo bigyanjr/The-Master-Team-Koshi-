@@ -46,6 +46,17 @@ export default function App() {
                   <Route path="scan/:id" element={<ProjectMobileScan />} />
                   <Route path="qr-demo/:id" element={<QrDemo />} />
                   <Route path="dev-reset" element={<DevReset />} />
+                  <Route path="admin" element={<RoleProtectedRoute />}>
+                    <Route element={<AdminLayout />}>
+                      <Route index element={<AdminDashboard />} />
+                      <Route path="add-project" element={<AddProject />} />
+                      <Route path="add-payment" element={<AddPayment />} />
+                      <Route path="upload-proof" element={<UploadProof />} />
+                      <Route path="add-update" element={<AddUpdate />} />
+                      <Route path="complaints" element={<AdminComplaints />} />
+                      <Route path="settings" element={<AdminSettings />} />
+                    </Route>
+                  </Route>
                   <Route element={<MainLayout />}>
                     <Route path="dashboard" element={<PublicDashboard />} />
                     <Route path="projects" element={<Projects />} />
@@ -55,17 +66,6 @@ export default function App() {
                     <Route path="ask" element={<CitizenQueryBot />} />
                     <Route path="profile" element={<ProtectedRoute />}>
                       <Route index element={<Profile />} />
-                    </Route>
-                    <Route path="admin" element={<RoleProtectedRoute />}>
-                      <Route element={<AdminLayout />}>
-                        <Route index element={<AdminDashboard />} />
-                        <Route path="add-project" element={<AddProject />} />
-                        <Route path="add-payment" element={<AddPayment />} />
-                        <Route path="upload-proof" element={<UploadProof />} />
-                        <Route path="add-update" element={<AddUpdate />} />
-                        <Route path="complaints" element={<AdminComplaints />} />
-                        <Route path="settings" element={<AdminSettings />} />
-                      </Route>
                     </Route>
                   </Route>
                 </Routes>

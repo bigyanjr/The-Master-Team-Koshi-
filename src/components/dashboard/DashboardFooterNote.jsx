@@ -7,7 +7,7 @@ export default function DashboardFooterNote({ municipality }) {
         {PRODUCT_NAME} · {municipality?.name || MUNICIPALITY_NAME}
         {municipality?.fiscalYear ? ` · FY ${municipality.fiscalYear}` : ''}
       </p>
-      <p className="text-[11px] text-slate-400 mt-1 dark:text-slate-500">
+      <p className="text-xs text-slate-400 mt-1 dark:text-slate-500">
         Public transparency portal — verify important details with your ward office.
       </p>
     </div>

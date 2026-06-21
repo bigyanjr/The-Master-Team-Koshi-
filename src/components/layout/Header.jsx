@@ -33,6 +33,17 @@ export default function Header() {
   const closeMenu = () => setMenuPath(null);
   const toggleMenu = () => setMenuPath(mobileOpen ? null : location.pathname);
 
+  // fullName isn't required for ward-admin accounts at registration, so it
+  // can be empty — fall back through position title, username, and finally
+  // the email's local part (every account has an email) before ever
+  // falling back to the generic "Profile" label. This guarantees something
+  // personal always shows whenever a profile is actually loaded.
+  const displayName = profile?.fullName?.trim()
+    || profile?.positionTitle?.trim()
+    || profile?.username?.trim()
+    || profile?.email?.split('@')[0];
+  const headerName = displayName?.split(' ')[0] || 'Profile';
+
   const handleLogout = async () => {
     closeMenu();
     await logout();
@@ -74,7 +85,7 @@ export default function Header() {
                     <>
                       <Link to="/profile" className="hidden sm:block">
                         <Button variant="ghost" size="sm" icon={User}>
-                          {profile?.fullName?.split(' ')[0] || 'Profile'}
+                          {headerName}
                         </Button>
                       </Link>
                       {canAccessAdminPortal && (
@@ -158,7 +169,7 @@ export default function Header() {
                   <>
                     <Link to="/profile" onClick={closeMenu} className="block">
                       <Button variant="secondary" size="md" icon={User} className="w-full">
-                        Profile
+                        {headerName}
                       </Button>
                     </Link>
                     {canAccessAdminPortal && (

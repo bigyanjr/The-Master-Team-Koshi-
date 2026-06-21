@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import DashboardKPIs from '../components/dashboard/DashboardKPIs';
 import CitizenActions from '../components/dashboard/CitizenActions';
+import WardBudgetSummary from '../components/dashboard/WardBudgetSummary';
 import MoneyFlowDiagram from '../components/transparency/MoneyFlowDiagram';
 import RecentUpdates from '../components/dashboard/RecentUpdates';
 import DashboardFooterNote from '../components/dashboard/DashboardFooterNote';
@@ -13,7 +14,7 @@ import EmptyState from '../components/ui/EmptyState';
 import Button from '../components/ui/Button';
 
 export default function PublicDashboard() {
-  const { publicProjects, municipality, dataLoading } = useData();
+  const { publicProjects, municipality, dataLoading, getWardBudgetSummary } = useData();
   const location = useLocation();
   const navigate = useNavigate();
   const [wardFilter, setWardFilter] = useState('all');
@@ -31,6 +32,11 @@ export default function PublicDashboard() {
   }, [publicProjects, wardFilter]);
 
   const hasData = filteredProjects.length > 0;
+  const selectedWardNo = wardFilter !== 'all' ? Number(wardFilter) : null;
+  const wardBudgetSummary = useMemo(
+    () => (selectedWardNo ? getWardBudgetSummary(selectedWardNo) : null),
+    [selectedWardNo, getWardBudgetSummary],
+  );
 
   if (dataLoading) {
     return (
@@ -59,6 +65,10 @@ export default function PublicDashboard() {
         )}
 
         <DashboardHeader wardFilter={wardFilter} onWardChange={setWardFilter} />
+
+        {selectedWardNo && wardBudgetSummary && (
+          <WardBudgetSummary wardNo={selectedWardNo} summary={wardBudgetSummary} />
+        )}
 
         <CitizenActions />
 

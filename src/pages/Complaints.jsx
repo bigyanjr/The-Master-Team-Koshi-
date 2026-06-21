@@ -72,7 +72,7 @@ function ComplaintCard({ complaint, project, ward }) {
 
       {resolveFileUrl(complaint) && (
         <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-100 dark:bg-slate-800/60 dark:border-slate-700">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2 dark:text-slate-400">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 dark:text-slate-400">
             Attached evidence
           </p>
           {isImageFileType(complaint.evidence?.fileType) || resolveFileUrl(complaint)?.startsWith('data:image') ? (
@@ -436,8 +436,9 @@ export default function Complaints() {
           </div>
         </div>
 
-        {/* List */}
-        <div className="lg:col-span-3 lg:max-h-[calc(100vh-6.5rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+        {/* List — scrolls normally with the page (no inner scroll box here);
+            only the form on the left is pinned/independently scrollable. */}
+        <div className="lg:col-span-3">
           <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">{t('complaints.board')}</h2>

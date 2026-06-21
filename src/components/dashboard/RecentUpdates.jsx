@@ -77,10 +77,10 @@ export default function RecentUpdates({ projects, limit = 3 }) {
                     <p className="text-xs text-slate-500 truncate dark:text-slate-400">{event.subtitle}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${config.color}`}>
+                    <span className={`text-xs font-bold uppercase px-1.5 py-0.5 rounded ${config.color}`}>
                       {t(config.labelKey)}
                     </span>
-                    <p className="text-[11px] text-slate-400 mt-1 dark:text-slate-500">{formatDate(event.date)}</p>
+                    <p className="text-xs text-slate-400 mt-1 dark:text-slate-500">{formatDate(event.date)}</p>
                   </div>
                 </Link>
               </li>

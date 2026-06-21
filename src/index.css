@@ -36,6 +36,14 @@
   ::selection {
     @apply bg-brand-200/80 text-brand-900;
   }
+
+  /* Tailwind doesn't set cursor:pointer on <button> by default (that was
+     removed years ago), so every button on the site was falling back to
+     the browser's plain arrow cursor on hover instead of a clickable hand —
+     this is the site-wide fix for that. */
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
 }
 
 @layer utilities {
@@ -105,11 +113,16 @@
     animation: wheel-spin 0.9s linear infinite;
   }
 
+  .animate-click-bounce {
+    animation: click-bounce 0.45s cubic-bezier(0.36, 1.7, 0.3, 1);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .animate-flow-in,
     .animate-flow-shimmer,
     .animate-drop-bounce,
-    .animate-wheel-spin {
+    .animate-wheel-spin,
+    .animate-click-bounce {
       animation: none;
     }
   }
@@ -141,6 +154,21 @@
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes click-bounce {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(0.9);
+  }
+  65% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 

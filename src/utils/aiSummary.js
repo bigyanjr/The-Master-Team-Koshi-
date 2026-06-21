@@ -11,9 +11,7 @@ import {
   getTotalPaid,
   getBudgetUsedPercent,
 } from './riskEngine';
-
-const GEMINI_MODEL = 'gemini-2.0-flash';
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+import { callGemini } from './geminiClient';
 
 function proofs(project) {
   return project.proofs ?? [];
@@ -188,35 +186,7 @@ ${JSON.stringify(ctx, null, 2)}`;
  * Mode 2 — Optional Gemini API call. Throws on failure; caller should fall back.
  */
 export async function callAISummary(project, apiKey = import.meta.env.VITE_AI_API_KEY) {
-  if (!apiKey?.trim()) {
-    throw new Error('VITE_AI_API_KEY is not configured');
-  }
-
-  const response = await fetch(`${GEMINI_ENDPOINT}?key=${encodeURIComponent(apiKey.trim())}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: buildAIPrompt(project) }] }],
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 1024,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const errBody = await response.text().catch(() => '');
-    throw new Error(`Gemini API error (${response.status}): ${errBody.slice(0, 200)}`);
-  }
-
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-
-  if (!text) {
-    throw new Error('Gemini API returned an empty summary');
-  }
-
-  return text;
+  return callGemini(buildAIPrompt(project), apiKey, { temperature: 0.4, maxOutputTokens: 1024 });
 }
 
 /**

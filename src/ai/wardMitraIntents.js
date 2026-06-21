@@ -6,6 +6,16 @@ const GREETING_KEYWORDS = [
   'namaskar',
   'mero sathi',
   'help',
+  'how are you',
+  'how r u',
+  "how's it going",
+  'whats up',
+  "what's up",
+  'ke cha',
+  'ke chha',
+  'sanchai cha',
+  'sanchai hununcha',
+  'thik cha',
 ];
 
 const IDENTITY_KEYWORDS = [
@@ -88,6 +98,13 @@ function containsAny(text, keywords) {
   return keywords.some((kw) => text.includes(kw));
 }
 
+// Naming a specific ward number, or asking in a clearly "give me the actual
+// figures" way, always means the citizen wants real data — even if the
+// sentence also matches a glossary pattern below. E.g. "what is the budget
+// of ward 1" looks like "what is X" (a definition pattern), but naming
+// Ward 1 means they want Ward 1's real budget, not a definition of "budget".
+const STRONG_DATA_SIGNAL = /\bward\s*(no\.?|number|num)?\s*\d+\b|\bwada\s*(no\.?|number|num)?\s*\d+\b|\bw\d+\b|वडा\s*(नं\.?|नम्बर)?\s*[\d०-९]+|where did|how much|kati paisa|kati kharcha|kaha gayo|kaha bhayo|kharcha bhayo|paid so far|spent so far/i;
+
 function isGreetingOnly(text) {
   const stripped = text.replace(/[!?.,"']/g, '').trim();
   if (GREETING_KEYWORDS.includes(stripped)) return true;
@@ -125,9 +142,12 @@ export function detectWardMitraIntent(question) {
 
   if (containsAny(q, IDENTITY_KEYWORDS)) return 'identity';
   if (containsAny(q, WARDWATCH_HISTORY_KEYWORDS)) return 'wardwatch_history';
-  if (detectDefinitionTopic(question)) return 'definition';
 
   const hasProjectSignal = containsAny(q, PROJECT_QUERY_KEYWORDS);
+
+  if (hasProjectSignal && STRONG_DATA_SIGNAL.test(q)) return 'project_query';
+
+  if (detectDefinitionTopic(question)) return 'definition';
   if (hasProjectSignal) return 'project_query';
 
   if (containsAny(q, GREETING_KEYWORDS) && (isGreetingOnly(q) || q.length <= 40)) {

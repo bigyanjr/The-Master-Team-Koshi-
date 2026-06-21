@@ -8,7 +8,6 @@ import LandingNav from '../components/landing/LandingNav';
 import LandingFooter from '../components/landing/LandingFooter';
 import MoneyFlowDiagram from '../components/transparency/MoneyFlowDiagram';
 import { PRODUCT_NAME, TAGLINE, MUNICIPALITY_NAME } from '../config/branding';
-import { useSiteSettings } from '../context/SiteSettingsContext';
 import { useLanguage } from '../context/LanguageContext';
 import useInView from '../hooks/useInView';
 
@@ -64,7 +63,6 @@ const howItWorks = [
 export default function Landing() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const { heroImageUrl } = useSiteSettings();
   const { t } = useLanguage();
   const [howItWorksRef, howItWorksInView] = useInView({ threshold: 0.25, once: false });
 
@@ -78,46 +76,34 @@ export default function Landing() {
     <div className="min-h-screen bg-white dark:bg-slate-950">
       <LandingNav />
 
-      <section
-        className="relative pt-32 pb-24 sm:pt-40 sm:pb-32 overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-900 to-green-950"
-        style={heroImageUrl ? {
-          backgroundImage: `url(${heroImageUrl})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        } : undefined}
-      >
-        {heroImageUrl ? (
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/85 via-emerald-900/75 to-green-950/85 pointer-events-none" />
-        ) : (
-          <>
-            <div
-              className="absolute inset-0 opacity-[0.15] pointer-events-none"
-              style={{
-                backgroundImage: 'radial-gradient(rgb(255 255 255 / 0.5) 1px, transparent 1px)',
-                backgroundSize: '24px 24px',
-              }}
-            />
-            <div className="absolute top-0 right-0 h-[28rem] w-[28rem] rounded-full bg-emerald-400/25 blur-[100px] pointer-events-none" />
-            <div className="absolute bottom-0 left-0 h-[24rem] w-[24rem] rounded-full bg-teal-300/15 blur-[100px] pointer-events-none" />
-          </>
-        )}
+      <section className="relative min-h-screen flex items-center overflow-hidden bg-emerald-950">
+        <img
+          src="/land.png"
+          alt="Itahari Sub-Metropolitan City gate"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ filter: 'brightness(0.92) contrast(1.05) saturate(1.05)' }}
+        />
+        {/* Dim tint ("madhuro") for polish + text legibility — darker at
+            top/bottom (nav + scroll-seam blending), lighter through the
+            middle so the photo still reads clearly behind the text. */}
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/78 via-emerald-900/52 to-emerald-950/78 pointer-events-none" />
         {/* Soft fade into the section below for a smoother seam */}
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white/10 to-transparent dark:from-slate-950/20 pointer-events-none" />
 
-        <div className="relative page-container">
+        <div className="relative page-container py-32">
           <div className="max-w-2xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-white text-xs font-semibold mb-7 backdrop-blur-sm">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/65 border border-white/25 text-white text-xs font-semibold mb-7 backdrop-blur-md shadow-sm">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
               {PRODUCT_NAME} · {TAGLINE}
             </div>
 
-            <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-white tracking-tight leading-[1.3]">
+            <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-white tracking-tight leading-[1.3] [text-shadow:0_2px_10px_rgba(0,0,0,0.45)]">
               {t('hero.headline.l1')}
               <br />
               {t('hero.headline.l2')}
             </h1>
 
-            <p className="mt-4 text-sm sm:text-base text-emerald-100/85 leading-relaxed max-w-lg mx-auto">
+            <p className="mt-4 text-sm sm:text-base text-emerald-50 leading-relaxed max-w-lg mx-auto [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]">
               {t('hero.description')}
             </p>
 
@@ -155,19 +141,15 @@ export default function Landing() {
               </div>
             </form>
 
-            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2 mt-7 pt-5 border-t border-white/10">
-              {quickActions.map(({ labelKey, to }, i) => (
-                <span key={to} className="flex items-center">
-                  <Link
-                    to={to}
-                    className="text-sm font-medium text-emerald-100/80 hover:text-white transition-colors px-2"
-                  >
-                    {t(labelKey)}
-                  </Link>
-                  {i < quickActions.length - 1 && (
-                    <span className="text-emerald-100/30">·</span>
-                  )}
-                </span>
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-7 pt-5 border-t border-white/10">
+              {quickActions.map(({ labelKey, to }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className="rounded-full bg-white px-3.5 py-1.5 text-xs sm:text-sm font-bold text-emerald-700 shadow-sm hover:bg-emerald-50 transition-colors"
+                >
+                  {t(labelKey)}
+                </Link>
               ))}
             </div>
           </div>

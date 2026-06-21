@@ -1,20 +1,28 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle, X, FolderKanban } from 'lucide-react';
+import { CheckCircle, X, FolderKanban, Wallet } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { filterProjectsForAdmin } from '../utils/permissions';
+import { MUNICIPALITY_NAME } from '../services/authService';
+import { useLanguage } from '../context/LanguageContext';
 import AdminKPIs from '../components/admin/AdminKPIs';
 import AdminQuickActions from '../components/admin/AdminQuickActions';
 import AdminProjectTable from '../components/admin/AdminProjectTable';
+import WardBudgetModal from '../components/admin/WardBudgetModal';
+import WardBudgetSummary from '../components/dashboard/WardBudgetSummary';
 import { DataResponsibilityNotice } from '../components/admin/AdminActivityFeed';
 import EmptyState from '../components/ui/EmptyState';
+import Button from '../components/ui/Button';
+
 export default function AdminDashboard() {
-  const { projects, wards, adminActivity } = useData();
+  const { projects, wards, adminActivity, getWardBudgetSummary, saveWardBudget } = useData();
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
   const [dismissedSuccess, setDismissedSuccess] = useState(false);
+  const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const successMessage = dismissedSuccess ? null : location.state?.registrationSuccess;
 
   const dismissSuccess = () => {
@@ -28,10 +36,19 @@ export default function AdminDashboard() {
     [projects, profile],
   );
 
+  const budgetSummary = useMemo(
+    () => getWardBudgetSummary(wardNo),
+    [getWardBudgetSummary, wardNo],
+  );
+
   const wardActivity = useMemo(() => {
     const wardProjectIds = new Set(wardProjects.map((p) => p.id));
     return adminActivity.filter((a) => !a.projectId || wardProjectIds.has(a.projectId));
   }, [adminActivity, wardProjects]);
+
+  const handleSaveBudget = async (payload) => {
+    await saveWardBudget(payload, { uid: profile?.uid });
+  };
 
   return (
     <div className="space-y-8">
@@ -50,20 +67,34 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-brand-950 dark:text-slate-50">
-          Ward {wardNo} — Office Portal
-        </h1>
-        <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">
-          Publish projects, payments, and proof photos for citizens to see.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-brand-950 dark:text-slate-50">
+            Ward {wardNo} — Office Portal
+          </h1>
+          <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">
+            Publish projects, payments, and proof photos for citizens to see.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="primary"
+          icon={Wallet}
+          className="shrink-0"
+          onClick={() => setBudgetModalOpen(true)}
+        >
+          {budgetSummary.isPublished ? t('wardBudget.manage') : t('wardBudget.set')}
+        </Button>
       </div>
 
       <AdminQuickActions />
 
       <section>
         <h2 className="text-sm font-bold text-slate-700 mb-3 dark:text-slate-300">Your ward at a glance</h2>
-        <AdminKPIs projects={wardProjects} demoWardNo={wardNo} />
+        <div className="space-y-4">
+          <WardBudgetSummary wardNo={wardNo} summary={budgetSummary} />
+          <AdminKPIs projects={wardProjects} demoWardNo={wardNo} />
+        </div>
       </section>
 
       {wardProjects.length === 0 ? (
@@ -105,6 +136,15 @@ export default function AdminDashboard() {
       )}
 
       <DataResponsibilityNotice />
+
+      <WardBudgetModal
+        open={budgetModalOpen}
+        onClose={() => setBudgetModalOpen(false)}
+        wardNo={wardNo}
+        municipalityName={MUNICIPALITY_NAME}
+        existingBudget={budgetSummary.budgetRecord}
+        onSave={handleSaveBudget}
+      />
     </div>
   );
 }

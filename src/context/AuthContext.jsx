@@ -7,6 +7,7 @@ import {
   loginUser,
   logoutUser,
   validateRegistration,
+  updateUserProfile,
   ROLES,
 } from '../services/authService';
 import {
@@ -47,6 +48,12 @@ export function AuthProvider({ children }) {
     setProfile(null);
   }, []);
 
+  const updateProfile = useCallback(async (updates) => {
+    const nextProfile = await updateUserProfile(profile?.uid, updates);
+    setProfile(nextProfile);
+    return nextProfile;
+  }, [profile?.uid]);
+
   const value = useMemo(() => ({
     profile,
     user: profile,
@@ -58,10 +65,11 @@ export function AuthProvider({ children }) {
     register,
     login,
     logout,
+    updateProfile,
     validateRegistration,
     getPostLoginPath: () => getUserHomeRoute(profile),
     ROLES,
-  }), [profile, loading, register, login, logout]);
+  }), [profile, loading, register, login, logout, updateProfile]);
 
   return (
     <AuthContext.Provider value={value}>

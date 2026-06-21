@@ -26,7 +26,7 @@ export default function AuthLayout({ children, title, subtitle }) {
           </div>
 
           <p className="text-center text-xs text-slate-400 mt-6">
-            Itahari ward budget transparency · Hackathon demo
+            Itahari ward budget transparency
           </p>
         </div>
       </div>

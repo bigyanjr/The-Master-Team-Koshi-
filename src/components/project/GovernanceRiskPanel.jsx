@@ -30,7 +30,7 @@ export default function GovernanceRiskPanel({ project, allProjects = [] }) {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Scale className="h-4 w-4 text-brand-700" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Governance Risk Detector
               </span>
             </div>
@@ -41,7 +41,7 @@ export default function GovernanceRiskPanel({ project, allProjects = [] }) {
             />
           </div>
           {flags.length > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-900 text-[11px] font-semibold border border-amber-200/80">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-900 text-xs font-semibold border border-amber-200/80">
               <AlertTriangle className="h-3.5 w-3.5" />
               Potential Governance Risk
             </span>
@@ -82,7 +82,7 @@ export default function GovernanceRiskPanel({ project, allProjects = [] }) {
               <Info className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
                 Auto Red Flag Explanation
               </p>
               <p className="text-sm text-slate-700 leading-relaxed">{explanation}</p>
@@ -94,7 +94,7 @@ export default function GovernanceRiskPanel({ project, allProjects = [] }) {
         </div>
 
         <div>
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-3">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
             Active transparency flags
           </p>
           {flags.length > 0 ? (

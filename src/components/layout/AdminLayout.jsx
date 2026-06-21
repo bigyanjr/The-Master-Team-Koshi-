@@ -49,6 +49,14 @@ export default function AdminLayout() {
   const { profile, isAuthenticated, loading } = useAuth();
   const { t } = useLanguage();
   const adminWardNo = profile?.wardNo;
+  // fullName isn't collected at ward-admin signup, so it's usually empty —
+  // fall back through position title, username, and the email's local part
+  // (every account has one of these) before the generic "Ward Admin" label.
+  const adminDisplayName = profile?.fullName?.trim()
+    || profile?.positionTitle?.trim()
+    || profile?.username?.trim()
+    || profile?.email?.split('@')[0]
+    || 'Ward Admin';
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (loading) {
@@ -67,7 +75,7 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] dashboard-bg">
-      <div className="bg-white dark:bg-slate-900">
+      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900">
         <div className="page-container py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 min-w-0">
@@ -83,9 +91,9 @@ export default function AdminLayout() {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-brand-900 text-emerald-300 text-[10px] font-bold uppercase tracking-wide">
+              <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-brand-900 text-emerald-300 text-xs font-bold uppercase tracking-wide">
                 <Shield className="h-3 w-3" />
-                {profile?.fullName || 'Ward Admin'}
+                {adminDisplayName}
               </span>
               <ThemeToggle className="hidden sm:inline-flex" />
               <Link

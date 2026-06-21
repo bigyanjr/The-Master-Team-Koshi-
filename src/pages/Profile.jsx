@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   User, Mail, Shield, Phone, Calendar, LogOut, MessageSquareHeart, FolderKanban, Briefcase, CheckCircle, Bookmark,
+  Pencil, Check, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
@@ -25,7 +26,7 @@ function ProfileField({ icon: Icon, label, value }) {
         <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p>
         <p className="text-sm font-semibold text-slate-900 mt-0.5 break-words">{value || '—'}</p>
       </div>
     </div>
@@ -33,8 +34,37 @@ function ProfileField({ icon: Icon, label, value }) {
 }
 
 export default function Profile() {
-  const { profile, logout, isWardAdmin, isApprovedWardAdmin } = useAuth();
+  const { profile, logout, isWardAdmin, isApprovedWardAdmin, updateProfile } = useAuth();
   const { projects, publicProjects } = useData();
+
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(profile?.fullName || '');
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState('');
+
+  const startEditingName = () => {
+    setNameDraft(profile?.fullName || '');
+    setNameError('');
+    setEditingName(true);
+  };
+
+  const handleSaveName = async () => {
+    const trimmed = nameDraft.trim();
+    if (!trimmed) {
+      setNameError('Name cannot be empty');
+      return;
+    }
+    setSavingName(true);
+    setNameError('');
+    try {
+      await updateProfile({ fullName: trimmed });
+      setEditingName(false);
+    } catch {
+      setNameError('Could not save your name. Please try again.');
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   const isPublicCitizen = profile?.role === ROLES.PUBLIC;
 
@@ -89,9 +119,50 @@ export default function Profile() {
                 <div className="h-16 w-16 rounded-full bg-gradient-to-br from-brand-600 to-emerald-600 flex items-center justify-center text-white text-xl font-bold shrink-0">
                   {profile?.fullName?.charAt(0)?.toUpperCase() || '?'}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-lg font-bold text-slate-900 truncate">{profile?.fullName}</p>
-                  <span className={`inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${
+                <div className="min-w-0 flex-1">
+                  {editingName ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        autoFocus
+                        value={nameDraft}
+                        onChange={(e) => setNameDraft(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
+                        placeholder="Your full name"
+                        className="min-w-0 flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveName}
+                        disabled={savingName}
+                        aria-label="Save name"
+                        className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 shrink-0"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingName(false)}
+                        disabled={savingName}
+                        aria-label="Cancel"
+                        className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 shrink-0"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={startEditingName}
+                      className="group flex items-center gap-1.5 text-left"
+                    >
+                      <p className={`text-lg font-bold truncate ${profile?.fullName ? 'text-slate-900' : 'text-slate-400 italic'}`}>
+                        {profile?.fullName || 'Add your name'}
+                      </p>
+                      <Pencil className="h-3.5 w-3.5 text-slate-300 group-hover:text-slate-500 shrink-0" />
+                    </button>
+                  )}
+                  {nameError && <p className="text-xs text-red-600 mt-1">{nameError}</p>}
+                  <span className={`inline-flex mt-1 px-2 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide ${
                     isWardAdmin ? 'bg-brand-900 text-emerald-300' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {roleLabel}

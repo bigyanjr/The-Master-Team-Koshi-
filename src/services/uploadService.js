@@ -1,7 +1,14 @@
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { getFirebaseApp, isFirebaseConfigured } from '../firebase/config';
 
-export const UPLOAD_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+// With no real backend, every upload is stored as a base64 data: URL
+// embedded directly in the app's localStorage snapshot (see
+// services/localStore.js). Browsers cap localStorage at roughly 5-10MB
+// PER ORIGIN TOTAL, and base64 inflates a file's size by ~33% — so the old
+// 10MB-per-file limit let a single photo silently blow the entire budget,
+// causing other data (or the upload itself) to fail to save. 2MB keeps
+// plenty of room for many photos/projects to coexist safely.
+export const UPLOAD_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 export const UPLOAD_ACCEPT = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 export const UPLOAD_ACCEPT_STRING = UPLOAD_ACCEPT.join(',');
 

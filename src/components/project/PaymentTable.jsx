@@ -72,11 +72,11 @@ export default function PaymentTable({ payments, proofs = [] }) {
         <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50/90">
-              <th className="px-4 sm:px-6 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Date</th>
-              <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Amount</th>
-              <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Milestone</th>
-              <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Remarks</th>
-              <th className="px-4 sm:px-6 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Proof</th>
+              <th className="px-4 sm:px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Amount</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Milestone</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Remarks</th>
+              <th className="px-4 sm:px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Proof</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

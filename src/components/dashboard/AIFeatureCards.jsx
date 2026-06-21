@@ -40,7 +40,7 @@ export default function AIFeatureCards() {
     <section>
       <div className="flex flex-wrap items-end justify-between gap-4 mb-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+          <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
             <Sparkles className="h-3.5 w-3.5" />
             Intelligence Layer
           </div>

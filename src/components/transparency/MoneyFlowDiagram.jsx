@@ -110,12 +110,12 @@ export default function MoneyFlowDiagram({ compact = false, className = '' }) {
               </div>
               <div className="min-w-0">
                 <span className={`font-semibold text-brand-950 dark:text-slate-100 block ${
-                  compact ? 'text-[11px]' : 'text-sm'
+                  compact ? 'text-xs' : 'text-sm'
                 }`}>
                   {t(step.labelKey)}
                 </span>
                 {!compact && (
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">{t(step.hintKey)}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 leading-snug">{t(step.hintKey)}</span>
                 )}
               </div>
             </div>

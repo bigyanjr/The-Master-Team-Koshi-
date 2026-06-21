@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
-  PlusCircle, Banknote, Camera, MessageSquareWarning, Activity,
+  PlusCircle, Banknote, Camera, MessageSquareWarning, Activity, Wallet,
 } from 'lucide-react';
 import Card, { CardHeader } from '../ui/Card';
 import { formatDate, formatRelativeTime } from '../../utils/formatters';
@@ -10,6 +10,7 @@ const TYPE_CONFIG = {
   payment: { icon: Banknote, color: 'bg-emerald-100 text-emerald-700' },
   proof: { icon: Camera, color: 'bg-blue-100 text-blue-700' },
   complaint: { icon: MessageSquareWarning, color: 'bg-amber-100 text-amber-700' },
+  budget: { icon: Wallet, color: 'bg-violet-100 text-violet-700' },
 };
 
 export default function AdminActivityFeed({ activities, limit = 8 }) {

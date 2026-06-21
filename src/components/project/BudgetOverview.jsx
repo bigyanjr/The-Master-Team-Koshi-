@@ -38,12 +38,12 @@ export default function BudgetOverview({ project, totalPaid, budgetUsed, remaini
           <div className={`inline-flex p-2 rounded-lg ${iconBg} mb-3`}>
             <Icon className="h-4 w-4" />
           </div>
-          <p className="text-[10px] sm:text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
+          <p className="text-xs sm:text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
           <p className={`text-lg sm:text-xl font-bold mt-1 ${key === 'tender' && tenderOver ? 'text-red-600' : 'text-slate-900'}`}>
             {values[key]}
           </p>
           {key === 'tender' && tenderOver && (
-            <p className="text-[10px] text-red-600 font-medium mt-1">Exceeds allocation</p>
+            <p className="text-xs text-red-600 font-medium mt-1">Exceeds allocation</p>
           )}
         </div>
       ))}

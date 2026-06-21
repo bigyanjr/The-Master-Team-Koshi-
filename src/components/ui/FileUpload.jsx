@@ -132,7 +132,7 @@ export default function FileUpload({
               JPEG, PNG, WEBP, PDF · max {formatFileSize(UPLOAD_MAX_BYTES)}
             </p>
             {!isStorageAvailable() && (
-              <p className="text-[11px] text-amber-600 mt-2 font-medium dark:text-amber-400">
+              <p className="text-xs text-amber-600 mt-2 font-medium dark:text-amber-400">
                 Demo mode — file preview stored locally
               </p>
             )}

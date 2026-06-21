@@ -50,7 +50,7 @@ export default function TrustScoreRing({ score, size = 'md', showLabel = true })
         </div>
       </div>
       {showLabel && size !== 'sm' && (
-        <span className={`text-[11px] font-semibold ${text}`}>{label}</span>
+        <span className={`text-xs font-semibold ${text}`}>{label}</span>
       )}
     </div>
   );
